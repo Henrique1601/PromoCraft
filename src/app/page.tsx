@@ -1,5 +1,6 @@
 import { fetchDeals, fetchStores } from '@/lib/cheapshark';
 import { DealsFeed } from '@/components/DealsFeed';
+import Link from 'next/link';
 import { Gamepad2, Sparkles, Tag, ShieldCheck } from 'lucide-react';
 
 export default async function HomePage() {
@@ -28,9 +29,16 @@ export default async function HomePage() {
           </div>
 
           <div className="flex items-center gap-4 text-xs text-zinc-400">
+            <Link
+              href="/wishlist"
+              className="flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3.5 py-1.5 font-semibold text-zinc-200 transition hover:border-emerald-500 hover:text-emerald-400"
+            >
+              <Tag className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Minha Wishlist & Alertas</span>
+            </Link>
             <div className="hidden sm:flex items-center gap-1.5">
               <ShieldCheck className="h-4 w-4 text-emerald-400" />
-              <span>Chaves 100% Oficiais e Autorizadas</span>
+              <span>Chaves 100% Oficiais</span>
             </div>
           </div>
         </div>
