@@ -9,6 +9,13 @@
 
 ---
 
+## 🌐 Produção (Live Demo)
+
+O projeto está oficialmente online em:  
+👉 **[https://promocraft.netlify.app](https://promocraft.netlify.app)**
+
+---
+
 ## ⚡ Principais Funcionalidades
 
 - **🔥 Feed Unificado de Ofertas**: Agregação de mais de 30 lojas oficiais de jogos para PC (Steam, Green Man Gaming, Nuuvem, GOG, Epic Games Store, Fanatical, etc.).
