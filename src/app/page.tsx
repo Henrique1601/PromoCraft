@@ -1,12 +1,14 @@
 import { fetchDeals, fetchStores } from '@/lib/cheapshark';
+import { getUSDtoBRLRate } from '@/lib/currency';
 import { DealsFeed } from '@/components/DealsFeed';
 import Link from 'next/link';
-import { Gamepad2, Sparkles, Tag, ShieldCheck } from 'lucide-react';
+import { Gamepad2, Sparkles, Tag, ShieldCheck, DollarSign } from 'lucide-react';
 
 export default async function HomePage() {
-  const [initialDeals, stores] = await Promise.all([
+  const [initialDeals, stores, rate] = await Promise.all([
     fetchDeals({ pageSize: 32, sortBy: 'Deal Rating' }),
     fetchStores(),
+    getUSDtoBRLRate(),
   ]);
 
   return (
@@ -29,6 +31,10 @@ export default async function HomePage() {
           </div>
 
           <div className="flex items-center gap-4 text-xs text-zinc-400">
+            <div className="hidden md:flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900/60 px-2.5 py-1 text-[11px] text-zinc-400">
+              <DollarSign className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Câmbio Comercial: <b>R$ {rate.toFixed(2)}</b></span>
+            </div>
             <Link
               href="/wishlist"
               className="flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3.5 py-1.5 font-semibold text-zinc-200 transition hover:border-emerald-500 hover:text-emerald-400"
@@ -62,7 +68,7 @@ export default async function HomePage() {
 
       {/* Main Content Feed */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-        <DealsFeed initialDeals={initialDeals} stores={stores} />
+        <DealsFeed initialDeals={initialDeals} stores={stores} rate={rate} />
       </main>
 
       {/* Footer */}

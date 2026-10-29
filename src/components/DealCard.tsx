@@ -6,18 +6,18 @@ import { Deal, Store } from '@/types/deals';
 interface DealCardProps {
   deal: Deal;
   store?: Store;
+  rate?: number;
 }
 
-export function DealCard({ deal, store }: DealCardProps) {
+export function DealCard({ deal, store, rate = 5.75 }: DealCardProps) {
   const savings = Math.round(parseFloat(deal.savings));
   const salePriceUSD = parseFloat(deal.salePrice);
   const normalPriceUSD = parseFloat(deal.normalPrice);
   const isFree = salePriceUSD === 0;
 
-  // Cotação estimada USD -> BRL
-  const USD_TO_BRL = 5.75;
-  const salePriceBRL = (salePriceUSD * USD_TO_BRL).toFixed(2).replace('.', ',');
-  const normalPriceBRL = (normalPriceUSD * USD_TO_BRL).toFixed(2).replace('.', ',');
+  // Cotação dinâmica
+  const salePriceBRL = (salePriceUSD * rate).toFixed(2).replace('.', ',');
+  const normalPriceBRL = (normalPriceUSD * rate).toFixed(2).replace('.', ',');
 
   const storeIconUrl = store?.images.icon
     ? `https://www.cheapshark.com${store.images.icon}`

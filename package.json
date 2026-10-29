@@ -10,6 +10,7 @@
     "postinstall": "prisma skills sync || exit 0"
   },
   "dependencies": {
+    "@netlify/plugin-nextjs": "^5.16.5",
     "@prisma/client": "^7.10.1",
     "better-sqlite3": "^13.0.3",
     "clsx": "^2.1.1",

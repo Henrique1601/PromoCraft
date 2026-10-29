@@ -8,14 +8,16 @@ import { DealCard } from '@/components/DealCard';
 interface DealsFeedProps {
   initialDeals: Deal[];
   stores: Store[];
+  rate?: number;
 }
 
-export function DealsFeed({ initialDeals, stores }: DealsFeedProps) {
+export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps) {
   const [deals, setDeals] = useState<Deal[]>(initialDeals);
   const [search, setSearch] = useState('');
   const [selectedStore, setSelectedStore] = useState('');
   const [sortBy, setSortBy] = useState<'Deal Rating' | 'Savings' | 'Price'>('Deal Rating');
   const [underPrice, setUnderPrice] = useState<string>('');
+  const [onlyFree, setOnlyFree] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const storeMap = new Map<string, Store>();
@@ -25,13 +27,23 @@ export function DealsFeed({ initialDeals, stores }: DealsFeedProps) {
     ['1', '3', '7', '11', '15', '25', '27'].includes(s.storeID)
   );
 
-  async function handleFilter(newSearch = search, newStore = selectedStore, newSort = sortBy, newUnder = underPrice) {
+  async function handleFilter(
+    newSearch = search,
+    newStore = selectedStore,
+    newSort = sortBy,
+    newUnder = underPrice,
+    isFree = onlyFree
+  ) {
     startTransition(async () => {
       const params = new URLSearchParams();
       if (newSearch.trim()) params.set('title', newSearch.trim());
       if (newStore) params.set('storeID', newStore);
       if (newSort) params.set('sortBy', newSort);
-      if (newUnder) params.set('upperPrice', newUnder);
+      if (isFree) {
+        params.set('upperPrice', '0');
+      } else if (newUnder) {
+        params.set('upperPrice', newUnder);
+      }
 
       try {
         const res = await fetch(`/api/deals?${params.toString()}`);
@@ -103,17 +115,36 @@ export function DealsFeed({ initialDeals, stores }: DealsFeedProps) {
           {/* Price ceiling */}
           <select
             value={underPrice}
+            disabled={onlyFree}
             onChange={(e) => {
               setUnderPrice(e.target.value);
-              handleFilter(search, selectedStore, sortBy, e.target.value);
+              handleFilter(search, selectedStore, sortBy, e.target.value, onlyFree);
             }}
-            className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs font-medium text-zinc-200 focus:border-emerald-500 focus:outline-none"
+            className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs font-medium text-zinc-200 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
           >
             <option value="">Qualquer Preço</option>
-            <option value="5">Até $5 (~R$ 28)</option>
-            <option value="10">Até $10 (~R$ 57)</option>
-            <option value="20">Até $20 (~R$ 115)</option>
+            <option value="5">Até $5 (~R$ {(5 * rate).toFixed(0)})</option>
+            <option value="10">Até $10 (~R$ {(10 * rate).toFixed(0)})</option>
+            <option value="20">Até $20 (~R$ {(20 * rate).toFixed(0)})</option>
           </select>
+
+          {/* Botão de Jogos Grátis */}
+          <button
+            type="button"
+            onClick={() => {
+              const nextFree = !onlyFree;
+              setOnlyFree(nextFree);
+              handleFilter(search, selectedStore, sortBy, underPrice, nextFree);
+            }}
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition border ${
+              onlyFree
+                ? 'bg-amber-400 border-amber-300 text-zinc-950 shadow-md shadow-amber-950/40'
+                : 'border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-amber-400 hover:text-amber-400'
+            }`}
+          >
+            <Zap className="h-3.5 w-3.5 fill-current" />
+            <span>100% Grátis</span>
+          </button>
 
           <button
             onClick={() => handleFilter(search, selectedStore, sortBy, underPrice)}
@@ -188,7 +219,7 @@ export function DealsFeed({ initialDeals, stores }: DealsFeedProps) {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {deals.map((deal) => (
-            <DealCard key={deal.dealID} deal={deal} store={storeMap.get(deal.storeID)} />
+            <DealCard key={deal.dealID} deal={deal} store={storeMap.get(deal.storeID)} rate={rate} />
           ))}
         </div>
       )}
