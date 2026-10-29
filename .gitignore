@@ -46,3 +46,6 @@ data/
 *.db-wal
 *.db-shm
 
+
+# Local Netlify folder
+.netlify
