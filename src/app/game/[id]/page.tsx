@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ExternalLink, Flame, History, ShieldCheck, Tag, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, History, Gamepad2 } from 'lucide-react';
 import { fetchGameDetails, fetchStores } from '@/lib/cheapshark';
 import { WishlistButton } from '@/components/WishlistButton';
+import { getDirectStoreUrl } from '@/lib/links';
 
 interface GamePageProps {
   params: Promise<{ id: string }>;
@@ -134,9 +135,12 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                   const storeIconUrl = store?.images.icon
                     ? `https://www.cheapshark.com${store.images.icon}`
                     : null;
-                  const dealUrl = `https://www.cheapshark.com/redirect?dealID=${encodeURIComponent(
-                    deal.dealID
-                  )}`;
+                  const directUrl = getDirectStoreUrl(
+                    deal.dealID,
+                    deal.storeID,
+                    game.info.steamAppID,
+                    game.info.title
+                  );
 
                   return (
                     <tr
@@ -194,7 +198,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
 
                       <td className="px-4 py-3.5 sm:px-6 text-right">
                         <a
-                          href={dealUrl}
+                          href={directUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${

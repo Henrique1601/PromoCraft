@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
   const sortBy = (searchParams.get('sortBy') as any) || 'Deal Rating';
   const desc = searchParams.get('desc') === '1';
   const pageNumber = searchParams.get('pageNumber') ? Number(searchParams.get('pageNumber')) : 0;
+  const pageSize = searchParams.get('pageSize') ? Number(searchParams.get('pageSize')) : 32;
   const upperPrice = searchParams.get('upperPrice') ? Number(searchParams.get('upperPrice')) : undefined;
 
   const deals = await fetchDeals({
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     desc,
     pageNumber,
     upperPrice,
-    pageSize: 32,
+    pageSize,
   });
 
   return NextResponse.json(deals);
