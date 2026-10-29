@@ -29,6 +29,7 @@ export function getDb(): Database.Database {
         currentBestPrice REAL,
         targetPrice REAL,
         email TEXT,
+        discordWebhook TEXT,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -40,6 +41,13 @@ export function getDb(): Database.Database {
         recordedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Adiciona coluna discordWebhook se ela não existir
+    try {
+      _db.exec(`ALTER TABLE wishlist ADD COLUMN discordWebhook TEXT;`);
+    } catch (e) {
+      // Coluna já existe
+    }
   }
   return _db;
 }

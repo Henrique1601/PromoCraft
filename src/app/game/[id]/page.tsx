@@ -3,7 +3,9 @@ import Link from 'next/link';
 import { ArrowLeft, ExternalLink, History, Gamepad2 } from 'lucide-react';
 import { fetchGameDetails, fetchStores } from '@/lib/cheapshark';
 import { WishlistButton } from '@/components/WishlistButton';
+import { PriceHistoryChart } from '@/components/PriceHistoryChart';
 import { getDirectStoreUrl } from '@/lib/links';
+import { getUSDtoBRLRate } from '@/lib/currency';
 
 interface GamePageProps {
   params: Promise<{ id: string }>;
@@ -11,9 +13,10 @@ interface GamePageProps {
 
 export default async function GameDetailPage({ params }: GamePageProps) {
   const { id } = await params;
-  const [game, stores] = await Promise.all([
+  const [game, stores, rate] = await Promise.all([
     fetchGameDetails(id),
     fetchStores(),
+    getUSDtoBRLRate(),
   ]);
 
   if (!game || !game.info) {
@@ -23,7 +26,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
   const storeMap = new Map();
   stores.forEach((s) => storeMap.set(s.storeID, s));
 
-  const USD_TO_BRL = 5.75;
+  const USD_TO_BRL = rate;
   const cheapestEverUSD = parseFloat(game.cheapestPriceEver.price);
   const cheapestEverBRL = (cheapestEverUSD * USD_TO_BRL).toFixed(2).replace('.', ',');
   const cheapestEverDate = new Date(game.cheapestPriceEver.date * 1000).toLocaleDateString('pt-BR');
@@ -99,6 +102,16 @@ export default async function GameDetailPage({ params }: GamePageProps) {
             </span>{' '}
             em {cheapestEverDate}.
           </div>
+        </div>
+
+        {/* Gráfico de Tendência & Histórico */}
+        <div className="mt-6">
+          <PriceHistoryChart
+            currentPrice={parseFloat(bestCurrentPrice)}
+            cheapestEverPrice={cheapestEverUSD}
+            retailPrice={parseFloat(sortedDeals[0]?.retailPrice || bestCurrentPrice)}
+            rate={rate}
+          />
         </div>
 
         {/* Store Comparison Table */}

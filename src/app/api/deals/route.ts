@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
   const pageNumber = searchParams.get('pageNumber') ? Number(searchParams.get('pageNumber')) : 0;
   const pageSize = searchParams.get('pageSize') ? Number(searchParams.get('pageSize')) : 32;
   const upperPrice = searchParams.get('upperPrice') ? Number(searchParams.get('upperPrice')) : undefined;
+  const steamRating = searchParams.get('steamRating') ? Number(searchParams.get('steamRating')) : undefined;
+  const AAA = searchParams.get('AAA') === '1';
 
   const deals = await fetchDeals({
     storeID,
@@ -19,6 +21,8 @@ export async function GET(request: NextRequest) {
     desc,
     pageNumber,
     upperPrice,
+    steamRating,
+    AAA,
     pageSize,
   });
 

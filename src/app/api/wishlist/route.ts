@@ -15,7 +15,17 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { gameID, title, thumb, steamAppID, cheapestPriceEver, currentBestPrice, targetPrice, email } = body;
+    const {
+      gameID,
+      title,
+      thumb,
+      steamAppID,
+      cheapestPriceEver,
+      currentBestPrice,
+      targetPrice,
+      email,
+      discordWebhook,
+    } = body;
 
     if (!gameID || !title) {
       return NextResponse.json({ error: 'gameID e title são obrigatórios' }, { status: 400 });
@@ -24,11 +34,12 @@ export async function POST(req: NextRequest) {
     const db = getDb();
     const id = crypto.randomUUID();
     const stmt = db.prepare(`
-      INSERT INTO wishlist (id, gameID, title, thumb, steamAppID, cheapestPriceEver, currentBestPrice, targetPrice, email)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO wishlist (id, gameID, title, thumb, steamAppID, cheapestPriceEver, currentBestPrice, targetPrice, email, discordWebhook)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(gameID) DO UPDATE SET
         targetPrice = excluded.targetPrice,
         email = excluded.email,
+        discordWebhook = excluded.discordWebhook,
         currentBestPrice = excluded.currentBestPrice
     `);
 
@@ -41,7 +52,8 @@ export async function POST(req: NextRequest) {
       cheapestPriceEver ? parseFloat(cheapestPriceEver) : null,
       currentBestPrice ? parseFloat(currentBestPrice) : null,
       targetPrice ? parseFloat(targetPrice) : null,
-      email || ''
+      email || '',
+      discordWebhook || ''
     );
 
     return NextResponse.json({ success: true, id });
