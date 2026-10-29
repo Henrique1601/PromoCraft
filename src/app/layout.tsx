@@ -15,6 +15,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "PromoCraft | As Melhores Promoções e Menores Preços de Jogos de PC",
   description: "Compare preços de jogos em tempo real entre Steam, Green Man Gaming, Nuuvem, GOG, Epic Games e Fanatical. Alertas de desconto e menor preço histórico.",
+  manifest: "/manifest.json",
+};
+
+export const viewport = {
+  themeColor: "#10b981",
 };
 
 export default function RootLayout({
