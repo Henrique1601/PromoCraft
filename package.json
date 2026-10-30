@@ -1,6 +1,26 @@
 {
-  "name": "promocraft-tmp",
-  "version": "0.1.0",
+  "name": "promocraft",
+  "version": "1.0.0",
+  "description": "Agregador e comparador em tempo real de promoções de jogos de PC com alertas de preço e conversão BRL",
+  "author": "Henrique Bezerra Dos Santos",
+  "license": "MIT",
+  "homepage": "https://promocraft.netlify.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Henrique1601/PromoCraft.git"
+  },
+  "keywords": [
+    "promocraft",
+    "game-deals",
+    "pc-gaming",
+    "steam",
+    "price-tracker",
+    "deals-aggregator",
+    "nextjs",
+    "tailwind",
+    "typescript",
+    "pwa"
+  ],
   "private": true,
   "scripts": {
     "dev": "next dev",
