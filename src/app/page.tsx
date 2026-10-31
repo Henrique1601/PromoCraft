@@ -2,7 +2,7 @@ import { fetchDeals, fetchStores } from '@/lib/cheapshark';
 import { getUSDtoBRLRate } from '@/lib/currency';
 import { DealsFeed } from '@/components/DealsFeed';
 import Link from 'next/link';
-import { Gamepad2, Sparkles, Tag, ShieldCheck, DollarSign } from 'lucide-react';
+import { Sparkles, Tag, ShieldCheck, DollarSign } from 'lucide-react';
 
 export default async function HomePage() {
   const [initialDeals, stores, rate] = await Promise.all([
@@ -16,10 +16,12 @@ export default async function HomePage() {
       {/* Top Navigation */}
       <header className="sticky top-0 z-50 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-md shadow-emerald-950/50">
-              <Gamepad2 className="h-5 w-5 text-zinc-950" />
-            </div>
+          <Link href="/" className="flex items-center gap-2.5 transition hover:opacity-90">
+            <img
+              src="/logo-mark.png"
+              alt="PromoCraft"
+              className="h-9 w-9 rounded-xl border border-emerald-500/30 object-cover shadow-md shadow-emerald-950/40"
+            />
             <div>
               <span className="text-lg font-bold tracking-tight text-zinc-100">
                 Promo<span className="text-emerald-400">Craft</span>
@@ -28,7 +30,7 @@ export default async function HomePage() {
                 PC Deals
               </span>
             </div>
-          </div>
+          </Link>
 
           <div className="flex items-center gap-4 text-xs text-zinc-400">
             <div className="hidden md:flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900/60 px-2.5 py-1 text-[11px] text-zinc-400">

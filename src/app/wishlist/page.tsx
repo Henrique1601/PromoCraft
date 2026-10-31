@@ -13,6 +13,7 @@ import {
   Download,
   CheckCircle,
   Share2,
+  Check,
 } from 'lucide-react';
 
 interface WishlistItem {
@@ -29,11 +30,14 @@ interface WishlistItem {
   createdAt: string;
 }
 
+const LOCAL_STORAGE_KEY = 'promocraft_wishlist_v1';
+
 export default function WishlistPage() {
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [checkingAlerts, setCheckingAlerts] = useState(false);
   const [alertSummary, setAlertSummary] = useState<string | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
 
   // Steam Import Modal / Input
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -43,16 +47,37 @@ export default function WishlistPage() {
 
   const USD_TO_BRL = 5.75;
 
+  // Carregar lista de forma híbrida (localStorage primeiro, depois sync com API)
   async function loadWishlist() {
-    setIsLoading(true);
+    let localList: WishlistItem[] = [];
+    try {
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (raw) {
+        localList = JSON.parse(raw);
+        if (Array.isArray(localList) && localList.length > 0) {
+          setItems(localList);
+          setIsLoading(false);
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao ler localStorage:', e);
+    }
+
     try {
       const res = await fetch('/api/wishlist');
       if (res.ok) {
-        const data = await res.json();
-        setItems(data);
+        const apiData: WishlistItem[] = await res.json();
+        if (Array.isArray(apiData)) {
+          // Mesclar preservando itens locais únicos
+          const gameIdSet = new Set(apiData.map((i) => i.gameID));
+          const localOnly = localList.filter((i) => !gameIdSet.has(i.gameID));
+          const merged = [...apiData, ...localOnly];
+          setItems(merged);
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+        }
       }
     } catch (e) {
-      console.error(e);
+      console.warn('API de banco indisponível, usando dados locais offline.');
     } finally {
       setIsLoading(false);
     }
@@ -63,15 +88,22 @@ export default function WishlistPage() {
   }, []);
 
   async function removeItem(gameID: string) {
+    // 1. Remove do estado e localStorage imediatamente
+    const updated = items.filter((i) => i.gameID !== gameID);
+    setItems(updated);
     try {
-      const res = await fetch(`/api/wishlist?gameID=${encodeURIComponent(gameID)}`, {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {
+      // ignore
+    }
+
+    // 2. Remove no backend
+    try {
+      await fetch(`/api/wishlist?gameID=${encodeURIComponent(gameID)}`, {
         method: 'DELETE',
       });
-      if (res.ok) {
-        setItems((prev) => prev.filter((i) => i.gameID !== gameID));
-      }
     } catch (e) {
-      console.error(e);
+      console.warn('Erro ao deletar da API:', e);
     }
   }
 
@@ -124,6 +156,30 @@ export default function WishlistPage() {
     }
   }
 
+  async function handleShareWishlist() {
+    const shareText = `Confira minha lista de desejos de jogos para PC no PromoCraft com monitoramento de menores preços!`;
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://promocraft.netlify.app/wishlist';
+
+    if (navigator?.share) {
+      try {
+        await navigator.share({
+          title: 'Minha Wishlist no PromoCraft',
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch (err) {
+        // Fallback para cópia
+      }
+    }
+
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2500);
+    }
+  }
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -131,13 +187,43 @@ export default function WishlistPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
           <Link
             href="/"
-            className="flex items-center gap-2 text-sm font-medium text-zinc-400 transition hover:text-emerald-400"
+            className="flex items-center gap-2.5 text-sm font-medium text-zinc-400 transition hover:text-emerald-400"
           >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Voltar ao Feed Geral</span>
+            <img
+              src="/logo-mark.png"
+              alt="PromoCraft"
+              className="h-7 w-7 rounded-lg border border-emerald-500/30 object-cover"
+            />
+            <div className="flex items-center gap-1.5">
+              <ArrowLeft className="h-4 w-4" />
+              <span>Voltar ao Feed Geral</span>
+            </div>
           </Link>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleShareWishlist}
+              disabled={items.length === 0}
+              className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
+                shareCopied
+                  ? 'bg-emerald-500 text-zinc-950 border-emerald-500 font-bold'
+                  : 'border-zinc-700 bg-zinc-900 text-zinc-200 hover:border-emerald-500 hover:text-emerald-400'
+              }`}
+            >
+              {shareCopied ? (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  <span>Link Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="h-3.5 w-3.5 text-emerald-400" />
+                  <span className="hidden sm:inline">Compartilhar Lista</span>
+                  <span className="sm:hidden">Compartilhar</span>
+                </>
+              )}
+            </button>
+
             <button
               onClick={() => setIsImportOpen(true)}
               className="flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-emerald-500 hover:text-emerald-400"
@@ -168,7 +254,7 @@ export default function WishlistPage() {
               <span>Minha Lista de Desejos & Alertas</span>
             </h1>
             <p className="mt-1 text-xs text-zinc-400">
-              Jogos salvos com monitoramento contínuo de preços, metas e alertas via Webhook/E-mail.
+              Jogos salvos com monitoramento contínuo de preços, metas e alertas via Webhook/E-mail. Armazenamento híbrido persistente.
             </p>
           </div>
           <span className="text-xs text-zinc-400">

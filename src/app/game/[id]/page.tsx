@@ -1,14 +1,55 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { ArrowLeft, ExternalLink, History, Gamepad2 } from 'lucide-react';
 import { fetchGameDetails, fetchStores } from '@/lib/cheapshark';
 import { WishlistButton } from '@/components/WishlistButton';
 import { PriceHistoryChart } from '@/components/PriceHistoryChart';
+import { DealVerdictCard } from '@/components/DealVerdictCard';
+import { CouponTracker } from '@/components/CouponTracker';
+import { SteamDeckBadge } from '@/components/SteamDeckBadge';
 import { getDirectStoreUrl } from '@/lib/links';
 import { getUSDtoBRLRate } from '@/lib/currency';
 
 interface GamePageProps {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: GamePageProps): Promise<Metadata> {
+  const { id } = await params;
+  const game = await fetchGameDetails(id);
+  if (!game || !game.info) {
+    return {
+      title: 'Jogo não encontrado | PromoCraft',
+    };
+  }
+
+  const sortedDeals = [...game.deals].sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+  const bestDeal = sortedDeals[0];
+  const savings = bestDeal ? Math.round(parseFloat(bestDeal.savings)) : 0;
+  const priceUSD = bestDeal ? parseFloat(bestDeal.price) : 0;
+
+  const title = savings > 0 
+    ? `${game.info.title} com ${savings}% OFF | PromoCraft` 
+    : `${game.info.title} | Comparativo de Preços PromoCraft`;
+
+  const description = `Compare preços de ${game.info.title} em mais de 30 lojas digitais. Menor preço atual por $${priceUSD.toFixed(2)} USD. Economize em ativações oficiais para PC.`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: game.info.thumb ? [{ url: game.info.thumb }] : [],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: game.info.thumb ? [game.info.thumb] : [],
+    },
+  };
 }
 
 export default async function GameDetailPage({ params }: GamePageProps) {
@@ -34,6 +75,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
   // Ordenar ofertas por menor preço
   const sortedDeals = [...game.deals].sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
   const bestCurrentPrice = sortedDeals[0]?.price || '0';
+  const retailPrice = parseFloat(sortedDeals[0]?.retailPrice || bestCurrentPrice);
 
   return (
     <div className="min-h-screen">
@@ -55,7 +97,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
       </header>
 
       {/* Main Details */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-6">
         {/* Game Header */}
         <div className="flex flex-col gap-6 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-6 backdrop-blur-md md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
@@ -92,8 +134,22 @@ export default async function GameDetailPage({ params }: GamePageProps) {
           </div>
         </div>
 
+        {/* Assistente de Decisão de Compra com IA / Algorítmico */}
+        <DealVerdictCard
+          currentPrice={parseFloat(bestCurrentPrice)}
+          cheapestEverPrice={cheapestEverUSD}
+          retailPrice={retailPrice}
+          rate={rate}
+          title={game.info.title}
+        />
+
+        {/* Steam Deck & Handheld Compatibility */}
+        {game.info.steamAppID && (
+          <SteamDeckBadge steamAppID={game.info.steamAppID} title={game.info.title} />
+        )}
+
         {/* Historical Low Card */}
-        <div className="mt-6 flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 text-sm text-emerald-300">
+        <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 text-sm text-emerald-300">
           <History className="h-5 w-5 text-emerald-400 flex-shrink-0" />
           <div>
             <span className="font-semibold">Menor Preço Histórico Registrado: </span>
@@ -105,17 +161,18 @@ export default async function GameDetailPage({ params }: GamePageProps) {
         </div>
 
         {/* Gráfico de Tendência & Histórico */}
-        <div className="mt-6">
-          <PriceHistoryChart
-            currentPrice={parseFloat(bestCurrentPrice)}
-            cheapestEverPrice={cheapestEverUSD}
-            retailPrice={parseFloat(sortedDeals[0]?.retailPrice || bestCurrentPrice)}
-            rate={rate}
-          />
-        </div>
+        <PriceHistoryChart
+          currentPrice={parseFloat(bestCurrentPrice)}
+          cheapestEverPrice={cheapestEverUSD}
+          retailPrice={retailPrice}
+          rate={rate}
+        />
+
+        {/* Rastreador de Cupons Ativos */}
+        <CouponTracker />
 
         {/* Store Comparison Table */}
-        <div className="mt-8">
+        <div className="pt-2">
           <h2 className="text-lg font-bold text-zinc-100 mb-4 flex items-center gap-2">
             <span>Preço Atual em Todas as Lojas Oficiais</span>
             <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">

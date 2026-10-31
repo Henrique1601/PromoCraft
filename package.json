@@ -1,6 +1,6 @@
 {
   "name": "promocraft",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Agregador e comparador em tempo real de promoções de jogos de PC com alertas de preço e conversão BRL",
   "author": "Henrique Bezerra Dos Santos",
   "license": "MIT",
@@ -27,6 +27,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "node --test test/**/*.test.mjs",
     "postinstall": "prisma skills sync || exit 0"
   },
   "dependencies": {

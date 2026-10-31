@@ -36,3 +36,14 @@ Este documento registra as decisões estratégicas e arquiteturais adotadas no d
 - **Contexto:** Dependências modernas como `@prisma/cli-engine`, `prisma@8` e `better-sqlite3@13` requerem Node `>=22.12.0`. Além disso, binários nativos de compilação do Tailwind Oxide diferem entre plataformas (Windows vs Linux).
 - **Decisão:** Fixar `node-version: 22` no GitHub Actions runner (`ubuntu-latest`) e utilizar o comando resiliente `npm ci || npm install` para assegurar compatibilidade total entre os ambientes.
 - **Status:** Aceito e Implementado.
+
+---
+
+### ADR-006: Assistente de Compra, SEO Dinâmico, Wishlist Híbrida e Testes Nativos (v1.1.0)
+- **Contexto:** Melhorar a experiência gamer, o compartilhamento social viral e a retenção de usuários, além de garantir tolerância a falhas em ambientes serverless efêmeros e testes automáticos no CI/CD.
+- **Decisão:**
+  1. Criação do `DealVerdictCard` para análise de preço vs histórico, `CouponTracker` para cupons em 1 clique e `SteamDeckBadge` para jogos em PCs portáteis.
+  2. Implementação de `generateMetadata`, `sitemap.ts` e `robots.ts` para SEO e rich social previews.
+  3. Adoção da Wishlist Híbrida (`localStorage` prioritário com sincronização na API de banco), garantindo disponibilidade offline contínua.
+  4. Implementação de suíte de testes com `node:test` nativo sem overhead de dependências externas.
+- **Status:** Aceito e Implementado.
