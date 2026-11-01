@@ -43,3 +43,10 @@ Este documento registra armadilhas técnicas superadas e instruções preventiva
 - **Sintoma:** Exceções do tipo `ReferenceError: window is not defined` ou animações acumulando/vazando memória em re-renderizações do React.
 - **Causa Raiz:** O GSAP manipula a árvore DOM real e não pode ser executado no ambiente de renderização do servidor Node.js (SSR). Ademais, no React 18/19 com Strict Mode, os efeitos de montagem rodam duas vezes para detectar vazamentos.
 - **Solução:** Sempre declarar `'use client'` nos componentes animados, instanciar tweens e timelines dentro de `useEffect` utilizando o padrão `gsap.context((self) => { ... }, containerRef)` e retornar obrigatoriamente `ctx.revert()` na função de cleanup do hook. Verificar preferência de movimento reduzido com `window.matchMedia('(prefers-reduced-motion: reduce)')`.
+
+---
+
+### 7. Tipagem Estrita em Parâmetros de Consulta (`DealsQueryParams`)
+- **Sintoma:** Falha no step de `Build Next.js Application` do GitHub Actions com erro `Type 'string' is not assignable to type 'number'` ao invocar `fetchDeals`.
+- **Causa Raiz:** A interface `DealsQueryParams` em `src/lib/cheapshark.ts` define propriedades numéricas estritas (`upperPrice?: number`, `lowerPrice?: number`, `steamRating?: number`). A passagem de literais de string (como `'6'`) é rejeitada pelo compilador TypeScript no build estrito do CI.
+- **Prevenção:** Utilizar sempre números literais (`upperPrice: 6`) ou coerção numérica explícita (`Number(val)` / `parseFloat(val)`).
