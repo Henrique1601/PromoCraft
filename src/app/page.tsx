@@ -11,7 +11,7 @@ export default async function HomePage() {
   const [initialDeals, superDeals, under30Deals, stores, rate] = await Promise.all([
     fetchDeals({ pageSize: 32, sortBy: 'Deal Rating' }),
     fetchDeals({ pageSize: 12, sortBy: 'Savings' }),
-    fetchDeals({ pageSize: 12, upperPrice: '6', sortBy: 'Deal Rating' }),
+    fetchDeals({ pageSize: 12, upperPrice: 6, sortBy: 'Deal Rating' }),
     fetchStores(),
     getUSDtoBRLRate(),
   ]);
