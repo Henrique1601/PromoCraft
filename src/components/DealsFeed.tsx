@@ -5,37 +5,26 @@ import Link from 'next/link';
 import {
   Search,
   Gamepad2,
-  RefreshCw,
-  Zap,
   LayoutGrid,
   List,
   Columns3,
   ChevronLeft,
   ChevronRight,
-  Award,
   RotateCcw,
+  SlidersHorizontal,
+  X,
+  Sparkles,
 } from 'lucide-react';
+import gsap from 'gsap';
 import { Deal, Store } from '@/types/deals';
 import { DealCard } from '@/components/DealCard';
 import { DealSkeleton } from '@/components/DealSkeleton';
-import { formatBRL } from '@/lib/currency';
+import { SidebarFilters, FilterState } from '@/components/SidebarFilters';
 
 interface DealsFeedProps {
   initialDeals: Deal[];
   stores: Store[];
   rate?: number;
-}
-
-interface FilterState {
-  search: string;
-  store: string;
-  sortBy: 'Deal Rating' | 'Savings' | 'Price';
-  underPrice: string;
-  onlyFree: boolean;
-  page: number;
-  pageSize: number;
-  minRating: string;
-  onlyAAA: boolean;
 }
 
 const INITIAL_FILTERS: FilterState = {
@@ -48,6 +37,7 @@ const INITIAL_FILTERS: FilterState = {
   pageSize: 32,
   minRating: '',
   onlyAAA: false,
+  topic: 'all',
 };
 
 export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps) {
@@ -56,9 +46,11 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
   const [suggestions, setSuggestions] = useState<Deal[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'compact' | 'list'>('grid');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const gridContainerRef = useRef<HTMLDivElement>(null);
 
   const storeMap = new Map<string, Store>();
   stores.forEach((s) => storeMap.set(s.storeID, s));
@@ -67,7 +59,18 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
     ['1', '2', '3', '7', '11', '15', '25', '27'].includes(s.storeID)
   );
 
-  // Autocomplete debounced
+  // Contagem de filtros ativos
+  const activeFiltersCount = [
+    Boolean(filters.search.trim()),
+    Boolean(filters.store),
+    Boolean(filters.underPrice),
+    Boolean(filters.onlyFree),
+    Boolean(filters.minRating),
+    Boolean(filters.onlyAAA),
+    Boolean(filters.topic && filters.topic !== 'all'),
+  ].filter(Boolean).length;
+
+  // Autocomplete com debounce
   useEffect(() => {
     if (!filters.search || filters.search.trim().length < 2) {
       setSuggestions([]);
@@ -101,6 +104,21 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Animação GSAP Stagger nos cards ao atualizar dados
+  useEffect(() => {
+    if (!gridContainerRef.current || isPending || deals.length === 0) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        '.deal-grid-item',
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.35, stagger: 0.025, ease: 'power2.out' }
+      );
+    }, gridContainerRef);
+
+    return () => ctx.revert();
+  }, [deals, isPending]);
 
   // Dispatcher centralizado de filtros com transição limpa
   function applyFilters(updates: Partial<FilterState>) {
@@ -147,303 +165,282 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
   }
 
   return (
-    <div className="space-y-6">
-      {/* Search & Main Filter Toolbar */}
-      <div className="flex flex-col gap-4 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4 backdrop-blur-md md:flex-row md:items-center md:justify-between shadow-lg">
-        {/* Search Input com Dropdown Autocomplete */}
-        <div ref={searchContainerRef} className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="text"
-            placeholder="Buscar por jogo (ex: Elden Ring, Cyberpunk, Resident Evil)..."
-            value={filters.search}
-            onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-            onFocus={() => {
-              if (suggestions.length > 0) setShowSuggestions(true);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                applyFilters({ search: e.currentTarget.value, page: 0 });
-              }
-            }}
-            className="w-full rounded-xl border border-zinc-800 bg-zinc-950/90 py-2.5 pl-10 pr-4 text-sm text-zinc-100 placeholder-zinc-500 transition focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          />
+    <div className="flex flex-col lg:flex-row items-start gap-8">
+      {/* 1. Sidebar de Filtros e Categorias */}
+      <SidebarFilters
+        filters={filters}
+        stores={stores}
+        popularStores={popularStores}
+        rate={rate}
+        onFilterChange={applyFilters}
+        onReset={resetAllFilters}
+        activeCount={activeFiltersCount}
+        isOpenMobile={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+      />
 
-          {/* Autocomplete Dropdown */}
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/95 shadow-2xl backdrop-blur-xl">
-              <div className="p-2.5 text-[11px] font-semibold uppercase text-zinc-500 border-b border-zinc-800/80">
-                Sugestões Rápidas:
-              </div>
-              <div className="divide-y divide-zinc-800/50">
-                {suggestions.map((sug) => {
-                  const sugPrice = formatBRL(parseFloat(sug.salePrice), rate);
-                  return (
-                    <Link
-                      key={sug.dealID}
-                      href={`/game/${sug.gameID}`}
-                      onClick={() => setShowSuggestions(false)}
-                      className="flex items-center justify-between p-2.5 transition hover:bg-zinc-900"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <img src={sug.thumb} alt={sug.title} className="h-9 w-16 rounded-lg object-cover border border-zinc-800" />
-                        <div className="truncate">
-                          <p className="text-xs font-semibold text-zinc-200 truncate">{sug.title}</p>
-                          <span className="text-[10px] text-zinc-400">Score: {sug.dealRating}/10</span>
+      {/* 2. Área Principal de Conteúdo & Grid */}
+      <div className="flex-1 min-w-0 w-full space-y-5">
+        {/* Barra Superior: Busca, Botão Mobile de Filtros e Controles de Visualização */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3.5 rounded-2xl border border-zinc-800/80 bg-zinc-950/70 p-3.5 backdrop-blur-xl shadow-lg">
+          {/* Botão de Filtros no Mobile */}
+          <button
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="flex lg:hidden items-center justify-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/90 px-4 py-2 text-xs font-bold text-zinc-200 transition hover:border-emerald-500 hover:text-emerald-400"
+          >
+            <SlidersHorizontal className="h-4 w-4 text-emerald-400" />
+            <span>Filtros & Categorias</span>
+            {activeFiltersCount > 0 && (
+              <span className="rounded-full bg-emerald-500 px-1.5 py-0.2 text-[10px] font-black text-zinc-950">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
+
+          {/* Campo de Busca com Autocomplete */}
+          <div ref={searchContainerRef} className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <input
+              type="text"
+              placeholder="Buscar jogos (ex: Resident Evil, Cyberpunk, Baldur's Gate)..."
+              value={filters.search}
+              onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  applyFilters({ search: filters.search, page: 0 });
+                }
+              }}
+              className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 py-2.5 pl-10 pr-10 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 transition focus:border-emerald-500 focus:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+            />
+            {filters.search && (
+              <button
+                onClick={() => applyFilters({ search: '', page: 0 })}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
+                aria-label="Limpar busca"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+
+            {/* Dropdown de Sugestões Autocomplete */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/95 p-1.5 shadow-2xl backdrop-blur-md">
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                  Sugestões Rápidas
+                </div>
+                <div className="divide-y divide-zinc-900">
+                  {suggestions.map((deal) => {
+                    const store = storeMap.get(deal.storeID);
+                    const priceUSD = parseFloat(deal.salePrice);
+                    const priceBRL = (priceUSD * rate).toFixed(2).replace('.', ',');
+                    return (
+                      <Link
+                        key={deal.dealID}
+                        href={`/game/${deal.gameID}`}
+                        onClick={() => setShowSuggestions(false)}
+                        className="flex items-center justify-between p-2 hover:bg-zinc-900/90 rounded-xl transition group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img
+                            src={deal.thumb}
+                            alt={deal.title}
+                            className="h-9 w-14 rounded-lg object-cover border border-zinc-800"
+                          />
+                          <div className="min-w-0">
+                            <span className="block truncate text-xs font-bold text-zinc-200 group-hover:text-emerald-400 transition">
+                              {deal.title}
+                            </span>
+                            <span className="text-[10px] text-zinc-400">
+                              {store?.storeName || 'Loja Oficial'}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="text-right flex-shrink-0 ml-3">
-                        <span className="text-xs font-bold text-emerald-400">
-                          {parseFloat(sug.salePrice) === 0 ? 'GRÁTIS' : `R$ ${sugPrice}`}
-                        </span>
-                      </div>
-                    </Link>
-                  );
-                })}
+                        <div className="text-right pl-3">
+                          <span className="text-xs font-black text-emerald-400">
+                            R$ {priceBRL}
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
+            )}
+          </div>
+
+          {/* Seletor de Modo de Visualização & Itens por Página */}
+          <div className="flex items-center justify-between sm:justify-end gap-2.5">
+            <select
+              value={filters.pageSize}
+              onChange={(e) => applyFilters({ pageSize: Number(e.target.value), page: 0 })}
+              className="rounded-xl border border-zinc-800 bg-zinc-900 px-2.5 py-2 text-xs font-medium text-zinc-300 focus:outline-none"
+            >
+              <option value="16">16 / pág</option>
+              <option value="32">32 / pág</option>
+              <option value="48">48 / pág</option>
+            </select>
+
+            <div className="flex items-center rounded-xl border border-zinc-800 bg-zinc-900/90 p-0.5">
+              <button
+                onClick={() => setViewMode('grid')}
+                title="Grade Padrão"
+                className={`rounded-lg p-1.5 transition ${
+                  viewMode === 'grid'
+                    ? 'bg-emerald-500 text-zinc-950 font-bold shadow'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('compact')}
+                title="Grade Compacta"
+                className={`rounded-lg p-1.5 transition ${
+                  viewMode === 'compact'
+                    ? 'bg-emerald-500 text-zinc-950 font-bold shadow'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Columns3 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                title="Lista Detalhada"
+                className={`rounded-lg p-1.5 transition ${
+                  viewMode === 'list'
+                    ? 'bg-emerald-500 text-zinc-950 font-bold shadow'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <List className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Chips de Filtros Ativos (quando houver) */}
+        {activeFiltersCount > 0 && (
+          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+            <span className="text-zinc-500 font-medium">Filtros aplicados:</span>
+            {filters.search && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/90 px-3 py-1 text-zinc-200">
+                <span>Busca: "{filters.search}"</span>
+                <button onClick={() => applyFilters({ search: '', page: 0 })}>
+                  <X className="h-3 w-3 text-zinc-400 hover:text-white" />
+                </button>
+              </span>
+            )}
+            {filters.store && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-300">
+                <span>Loja: {storeMap.get(filters.store)?.storeName || filters.store}</span>
+                <button onClick={() => applyFilters({ store: '', page: 0 })}>
+                  <X className="h-3 w-3 text-emerald-400 hover:text-white" />
+                </button>
+              </span>
+            )}
+            {filters.topic && filters.topic !== 'all' && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-300">
+                <Sparkles className="h-3 w-3" />
+                <span>Tópico Ativo</span>
+                <button onClick={() => applyFilters({ topic: 'all', page: 0 })}>
+                  <X className="h-3 w-3 text-emerald-400 hover:text-white" />
+                </button>
+              </span>
+            )}
+            {filters.underPrice && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/90 px-3 py-1 text-zinc-200">
+                <span>Até ${filters.underPrice} USD</span>
+                <button onClick={() => applyFilters({ underPrice: '', page: 0 })}>
+                  <X className="h-3 w-3 text-zinc-400 hover:text-white" />
+                </button>
+              </span>
+            )}
+            {filters.minRating && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/90 px-3 py-1 text-zinc-200">
+                <span>Avaliação {filters.minRating}%+</span>
+                <button onClick={() => applyFilters({ minRating: '', page: 0 })}>
+                  <X className="h-3 w-3 text-zinc-400 hover:text-white" />
+                </button>
+              </span>
+            )}
+            <button
+              onClick={resetAllFilters}
+              className="text-xs text-emerald-400 hover:underline font-semibold ml-1"
+            >
+              Limpar Todos
+            </button>
+          </div>
+        )}
+
+        {/* Deals Container com GSAP Stagger e Skeletons */}
+        <div ref={gridContainerRef}>
+          {isPending ? (
+            <DealSkeleton viewMode={viewMode} count={filters.pageSize > 32 ? 16 : 8} />
+          ) : deals.length === 0 ? (
+            <div className="rounded-3xl border border-zinc-800/80 bg-zinc-950/40 p-12 text-center backdrop-blur-md">
+              <Gamepad2 className="mx-auto h-12 w-12 text-zinc-600" />
+              <h3 className="mt-3 text-base font-extrabold text-zinc-200">
+                Nenhuma oferta encontrada
+              </h3>
+              <p className="mt-1 text-xs sm:text-sm text-zinc-400">
+                Tente ajustar os filtros na barra lateral ou buscar por outro título.
+              </p>
+              <button
+                onClick={resetAllFilters}
+                className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-5 py-2.5 text-xs font-bold text-zinc-950 transition hover:bg-emerald-400 shadow-lg shadow-emerald-950/40"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Restaurar Catálogo Completo</span>
+              </button>
+            </div>
+          ) : (
+            <div
+              className={
+                viewMode === 'list'
+                  ? 'space-y-3'
+                  : viewMode === 'compact'
+                  ? 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5'
+                  : 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'
+              }
+            >
+              {deals.map((deal) => (
+                <div key={deal.dealID} className="deal-grid-item">
+                  <DealCard
+                    deal={deal}
+                    store={storeMap.get(deal.storeID)}
+                    rate={rate}
+                    viewMode={viewMode}
+                  />
+                </div>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Loja */}
-          <select
-            value={filters.store}
-            onChange={(e) => applyFilters({ store: e.target.value, page: 0 })}
-            className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs font-medium text-zinc-200 focus:border-emerald-500 focus:outline-none"
-          >
-            <option value="">Todas as Lojas</option>
-            {popularStores.map((s) => (
-              <option key={s.storeID} value={s.storeID}>
-                {s.storeName}
-              </option>
-            ))}
-          </select>
-
-          {/* Ordenação */}
-          <select
-            value={filters.sortBy}
-            onChange={(e) => applyFilters({ sortBy: e.target.value as any, page: 0 })}
-            className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs font-medium text-zinc-200 focus:border-emerald-500 focus:outline-none"
-          >
-            <option value="Deal Rating">🔥 Melhor Negócio</option>
-            <option value="Savings">⚡ Maior Desconto</option>
-            <option value="Price">💰 Menor Preço</option>
-          </select>
-
-          {/* Filtro de Avaliação Steam */}
-          <select
-            value={filters.minRating}
-            onChange={(e) => applyFilters({ minRating: e.target.value, page: 0 })}
-            className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs font-medium text-zinc-200 focus:border-emerald-500 focus:outline-none"
-          >
-            <option value="">Qualquer Nota</option>
-            <option value="70">⭐ Steam 70%+ (Positiva)</option>
-            <option value="80">⭐⭐ Steam 80%+ (Muito Positiva)</option>
-            <option value="90">⭐⭐⭐ Steam 90%+ (Extremamente)</option>
-          </select>
-
-          {/* Teto de Preço */}
-          <select
-            value={filters.underPrice}
-            disabled={filters.onlyFree}
-            onChange={(e) => applyFilters({ underPrice: e.target.value, page: 0 })}
-            className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs font-medium text-zinc-200 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
-          >
-            <option value="">Qualquer Preço</option>
-            <option value="5">Até $5 (~R$ {(5 * rate).toFixed(0)})</option>
-            <option value="10">Até $10 (~R$ {(10 * rate).toFixed(0)})</option>
-            <option value="20">Até $20 (~R$ {(20 * rate).toFixed(0)})</option>
-          </select>
-
-          {/* Botão Jogos AAA */}
+        {/* Controles de Paginação */}
+        <div className="flex items-center justify-between border-t border-zinc-800/80 pt-6">
           <button
-            type="button"
-            onClick={() => applyFilters({ onlyAAA: !filters.onlyAAA, page: 0 })}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition border ${
-              filters.onlyAAA
-                ? 'bg-purple-600 border-purple-500 text-white shadow-md shadow-purple-950/40'
-                : 'border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-purple-500 hover:text-purple-400'
-            }`}
+            onClick={() => changePage(filters.page - 1)}
+            disabled={filters.page === 0 || isPending}
+            className="flex items-center gap-1.5 rounded-2xl border border-zinc-800 bg-zinc-950/80 px-4 py-2.5 text-xs font-bold text-zinc-300 transition hover:border-emerald-500 hover:text-emerald-400 disabled:opacity-40"
           >
-            <Award className="h-3.5 w-3.5 fill-current" />
-            <span>Grandes Jogos (AAA)</span>
+            <ChevronLeft className="h-4 w-4" />
+            <span>Página Anterior</span>
           </button>
 
-          {/* Botão de Jogos Grátis */}
+          <span className="text-xs font-semibold text-zinc-400">
+            Página <b className="text-emerald-400">{filters.page + 1}</b>
+          </span>
+
           <button
-            type="button"
-            onClick={() => applyFilters({ onlyFree: !filters.onlyFree, page: 0 })}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition border ${
-              filters.onlyFree
-                ? 'bg-amber-400 border-amber-300 text-zinc-950 shadow-md shadow-amber-950/40'
-                : 'border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-amber-400 hover:text-amber-400'
-            }`}
+            onClick={() => changePage(filters.page + 1)}
+            disabled={deals.length < filters.pageSize || isPending}
+            className="flex items-center gap-1.5 rounded-2xl border border-zinc-800 bg-zinc-950/80 px-4 py-2.5 text-xs font-bold text-zinc-300 transition hover:border-emerald-500 hover:text-emerald-400 disabled:opacity-40"
           >
-            <Zap className="h-3.5 w-3.5 fill-current" />
-            <span>100% Grátis</span>
+            <span>Próxima Página</span>
+            <ChevronRight className="h-4 w-4" />
           </button>
         </div>
-      </div>
-
-      {/* View Options & Pagination Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
-        {/* Lojas Rápidas */}
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 text-xs">
-          <span className="text-zinc-500 font-medium whitespace-nowrap">Lojas:</span>
-          <button
-            onClick={() => applyFilters({ store: '', page: 0 })}
-            className={`rounded-lg px-2.5 py-1 transition whitespace-nowrap ${
-              filters.store === ''
-                ? 'bg-emerald-500 text-zinc-950 font-bold'
-                : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            Todas
-          </button>
-          {popularStores.map((store) => {
-            const isSelected = filters.store === store.storeID;
-            return (
-              <button
-                key={store.storeID}
-                onClick={() => applyFilters({ store: isSelected ? '' : store.storeID, page: 0 })}
-                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 transition whitespace-nowrap ${
-                  isSelected
-                    ? 'bg-emerald-500 text-zinc-950 font-bold'
-                    : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                <img
-                  src={`https://www.cheapshark.com${store.images.icon}`}
-                  alt={store.storeName}
-                  className="h-3 w-3 object-contain"
-                />
-                <span>{store.storeName}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* View Mode Controls & Items per page */}
-        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
-          {/* Itens por página */}
-          <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-            <span>Itens:</span>
-            <select
-              value={filters.pageSize}
-              onChange={(e) => applyFilters({ pageSize: Number(e.target.value), page: 0 })}
-              className="rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-200 focus:outline-none"
-            >
-              <option value="16">16</option>
-              <option value="32">32</option>
-              <option value="48">48</option>
-              <option value="60">60</option>
-            </select>
-          </div>
-
-          {/* Seletor de Modo de Visualização */}
-          <div className="flex items-center rounded-xl border border-zinc-800 bg-zinc-900/80 p-0.5 shadow-inner">
-            <button
-              onClick={() => setViewMode('grid')}
-              title="Grade Padrão"
-              className={`rounded-lg p-1.5 transition ${
-                viewMode === 'grid'
-                  ? 'bg-emerald-500 text-zinc-950 font-bold shadow'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('compact')}
-              title="Grade Compacta"
-              className={`rounded-lg p-1.5 transition ${
-                viewMode === 'compact'
-                  ? 'bg-emerald-500 text-zinc-950 font-bold shadow'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <Columns3 className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              title="Lista Detalhada"
-              className={`rounded-lg p-1.5 transition ${
-                viewMode === 'list'
-                  ? 'bg-emerald-500 text-zinc-950 font-bold shadow'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <List className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Deals Container & Loading Skeletons */}
-      {isPending ? (
-        <DealSkeleton viewMode={viewMode} count={filters.pageSize > 32 ? 16 : 8} />
-      ) : deals.length === 0 ? (
-        <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/30 p-12 text-center">
-          <Gamepad2 className="mx-auto h-12 w-12 text-zinc-600" />
-          <h3 className="mt-3 text-base font-semibold text-zinc-200">Nenhuma oferta encontrada</h3>
-          <p className="mt-1 text-sm text-zinc-500">
-            Tente remover alguns filtros ou buscar por outro termo.
-          </p>
-          <button
-            onClick={resetAllFilters}
-            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-zinc-950 transition hover:bg-emerald-400 shadow-lg shadow-emerald-950/40"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            <span>Limpar Todos os Filtros</span>
-          </button>
-        </div>
-      ) : (
-        <div
-          className={
-            viewMode === 'list'
-              ? 'space-y-3'
-              : viewMode === 'compact'
-              ? 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
-              : 'grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
-          }
-        >
-          {deals.map((deal) => (
-            <DealCard
-              key={deal.dealID}
-              deal={deal}
-              store={storeMap.get(deal.storeID)}
-              rate={rate}
-              viewMode={viewMode}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Pagination Controls */}
-      <div className="flex items-center justify-between border-t border-zinc-800/80 pt-6">
-        <button
-          onClick={() => changePage(filters.page - 1)}
-          disabled={filters.page === 0 || isPending}
-          className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-emerald-500 hover:text-emerald-400 disabled:opacity-40 disabled:hover:border-zinc-800 disabled:hover:text-zinc-300"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          <span>Página Anterior</span>
-        </button>
-
-        <span className="text-xs font-medium text-zinc-400">
-          Página <b className="text-emerald-400">{filters.page + 1}</b>
-        </span>
-
-        <button
-          onClick={() => changePage(filters.page + 1)}
-          disabled={deals.length < filters.pageSize || isPending}
-          className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-emerald-500 hover:text-emerald-400 disabled:opacity-40"
-        >
-          <span>Próxima Página</span>
-          <ChevronRight className="h-4 w-4" />
-        </button>
       </div>
     </div>
   );

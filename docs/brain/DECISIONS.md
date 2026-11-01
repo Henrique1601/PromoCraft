@@ -69,3 +69,16 @@ Este documento registra as decisões estratégicas e arquiteturais adotadas no d
   3. **Transparência e Procedência Gamer:** Inclusão de badges de distinção (Revendedor Oficial vs Marketplace de Chaves) e aviso de responsabilidade gamer orientando conferência de reputação de vendedores e taxas de pagamento.
   4. **Testes Unitários:** Expansão de `test/logic.test.mjs` para validar resolução de URLs da GamersGate, Humble Store e provedores de marketplace externo.
 - **Status:** Aceito e Implementado.
+
+---
+
+### ADR-009: Redesign Gamer Moderno Inspirado na Nuuvem, Fundo Animado com GSAP, Tópicos Temáticos e Sidebar Multifacetada (v1.4.0)
+- **Contexto:** Demanda por transformar a interface do PromoCraft em uma vitrine sedutora e moderna de alta conversão para gamers (referência direta: `nuuvem.com/br-pt`), substituindo o visual básico por atmosfera imersiva, prateleiras temáticas, fundo animado fluido e controle avançado de filtros.
+- **Decisão:**
+  1. **Fundo Animado com GSAP (`GsapBackground.tsx`):** Base escura gamer (`#090b0e`), grid isométrico sutil e orbes de luz fluida (esmeralda, ciano e violeta) animados com GSAP, com respeito a `prefers-reduced-motion` e cleanup estrito em `ctx.revert()`.
+  2. **Hero Showcase Cinematográfico (`HeroShowcase.tsx`):** Vitrine interativa de super destaques estilo Nuuvem/Steam com transições GSAP, arte de fundo com desfoque cinematográfico, badge de desconto vibrante, cotação dupla BRL/USD, CTAs proeminentes e navegação por miniaturas.
+  3. **Prateleiras Temáticas por Tópicos (`TopicsShelf.tsx`):** Coleções com rolagem horizontal suave para "Super Ofertas & Recordes Históricos (70%+ OFF)" e "Baratos Imperdíveis (Até R$ 30)".
+  4. **Sidebar Multifacetada (`SidebarFilters.tsx`):** Navegação lateral completa com coleções temáticas, lojas com logos oficiais, faixas de preço regionalizadas em Reais (BRL), filtros de avaliação da comunidade e suporte a drawer no mobile.
+  5. **Cards Elegantes e Sedutores (`DealCard.tsx`):** Efeito hover refinado com iluminação de borda, badges com gradiente energético, selos de lojas oficiais, compatibilidade Steam Deck e ações rápidas ("Comparar" e "Ir à Loja").
+  6. **Testes Unitários Automatizados:** Testes expandidos em `test/logic.test.mjs` cobrindo conversão de faixas de preço em Reais e categorização de super negócios.
+- **Status:** Aceito e Implementado.

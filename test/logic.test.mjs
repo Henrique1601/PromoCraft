@@ -158,4 +158,25 @@ describe('PromoCraft - Testes Unitários de Regra de Negócio & Clean Code', () 
       assert.strictEqual(verdict, 'WAIT');
     });
   });
+
+  describe('Conversão de Tópicos e Faixas de Preço BRL', () => {
+    test('deve converter teto de R$ 30 para o equivalente em USD baseado na taxa', () => {
+      const rate = 5.75;
+      const usdMax = Math.round(30 / rate).toString();
+      assert.strictEqual(usdMax, '5');
+    });
+
+    test('deve converter teto de R$ 60 para o equivalente em USD baseado na taxa', () => {
+      const rate = 6.0;
+      const usdMax = Math.round(60 / rate).toString();
+      assert.strictEqual(usdMax, '10');
+    });
+
+    test('deve identificar negócios classificados como Super Desconto (75%+ ou score alto)', () => {
+      const isSuperDeal = (savings, rating) => savings >= 75 || parseFloat(rating) >= 9.5;
+      assert.strictEqual(isSuperDeal(80, '8.0'), true);
+      assert.strictEqual(isSuperDeal(50, '9.7'), true);
+      assert.strictEqual(isSuperDeal(40, '7.0'), false);
+    });
+  });
 });

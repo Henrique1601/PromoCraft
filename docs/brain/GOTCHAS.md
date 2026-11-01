@@ -36,3 +36,10 @@ Este documento registra armadilhas técnicas superadas e instruções preventiva
 - **Sintoma:** Tentativa de buscar ofertas da Eneba ou Kinguin na API do CheapShark resulta em ausência de dados.
 - **Causa Raiz:** A CheapShark mantém contratos de conformidade estritos com publishers e distribuidoras (Valve, CD Projekt, Capcom, etc.), agregando exclusivamente revendedores autorizados (GamersGate `storeID: 2`, Steam `storeID: 1`, GMG `storeID: 3`, Humble `storeID: 11`). Marketplaces de terceiros (mercado cinza/P2P) são banidos de suas rotas.
 - **Solução:** Modelo híbrido à la GG.deals: GamersGate é consumida nativamente via API CheapShark com ID `2`, enquanto Eneba, Kinguin e Nuuvem são integradas via deep links de busca parametrizada no componente `MarketplaceLinksCard` com disclaimer de procedência.
+
+---
+
+### 6. GSAP no Next.js App Router e React 19 (SSR, StrictMode & Cleanup)
+- **Sintoma:** Exceções do tipo `ReferenceError: window is not defined` ou animações acumulando/vazando memória em re-renderizações do React.
+- **Causa Raiz:** O GSAP manipula a árvore DOM real e não pode ser executado no ambiente de renderização do servidor Node.js (SSR). Ademais, no React 18/19 com Strict Mode, os efeitos de montagem rodam duas vezes para detectar vazamentos.
+- **Solução:** Sempre declarar `'use client'` nos componentes animados, instanciar tweens e timelines dentro de `useEffect` utilizando o padrão `gsap.context((self) => { ... }, containerRef)` e retornar obrigatoriamente `ctx.revert()` na função de cleanup do hook. Verificar preferência de movimento reduzido com `window.matchMedia('(prefers-reduced-motion: reduce)')`.
