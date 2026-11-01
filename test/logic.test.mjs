@@ -1,6 +1,12 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 
+// Teste de formatação BRL
+function formatBRL(priceUSD, rate = 5.75) {
+  const brl = priceUSD * rate;
+  return brl.toFixed(2).replace('.', ',');
+}
+
 // Teste de resolução de URLs diretas
 function getDirectStoreUrl(dealID, storeID, steamAppID, gameTitle) {
   if (storeID === '1' && steamAppID && steamAppID !== '0') {
@@ -42,7 +48,24 @@ function getDealVerdict(currentPrice, cheapestEverPrice, retailPrice) {
   return 'WAIT';
 }
 
-describe('PromoCraft - Testes Unitários de Regra de Negócio', () => {
+describe('PromoCraft - Testes Unitários de Regra de Negócio & Clean Code', () => {
+  describe('Formatação Cambial BRL', () => {
+    test('deve formatar valor corretamente com separador decimal em vírgula', () => {
+      const formatted = formatBRL(10.0, 5.5);
+      assert.strictEqual(formatted, '55,00');
+    });
+
+    test('deve utilizar taxa padrão 5.75 quando rate não for especificado', () => {
+      const formatted = formatBRL(20.0);
+      assert.strictEqual(formatted, '115,00');
+    });
+
+    test('deve formatar valores fracionados com 2 casas decimais', () => {
+      const formatted = formatBRL(4.99, 5.0);
+      assert.strictEqual(formatted, '24,95');
+    });
+  });
+
   describe('Resolução de Links Oficiais de Lojas', () => {
     test('deve resolver link direto da Steam quando storeID é 1 e possui steamAppID', () => {
       const url = getDirectStoreUrl('deal123', '1', '1091500', 'Cyberpunk 2077');

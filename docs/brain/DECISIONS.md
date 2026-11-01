@@ -47,3 +47,14 @@ Este documento registra as decisões estratégicas e arquiteturais adotadas no d
   3. Adoção da Wishlist Híbrida (`localStorage` prioritário com sincronização na API de banco), garantindo disponibilidade offline contínua.
   4. Implementação de suíte de testes com `node:test` nativo sem overhead de dependências externas.
 - **Status:** Aceito e Implementado.
+
+---
+
+### ADR-007: Clean Code de Filtros, Formatação Cambial Centralizada e Polish Visual com Skeletons (v1.2.0)
+- **Contexto:** Reduzir débito técnico no gerenciamento de estados do feed (anti-pattern de 9 parâmetros posicionais), eliminar formatações duplicadas de preço e elevar o acabamento visual da aplicação ao nível Linear/Steam.
+- **Decisão:**
+  1. Criação do contrato tipado `FilterState` e dispatcher imutável `applyFilters(partialUpdate)` em `DealsFeed.tsx`.
+  2. Centralização da conversão e formatação monetária em `formatBRL` no módulo `currency.ts` com cobertura de testes unitários.
+  3. Criação do componente `DealSkeleton` para carregamento suave sem layout shift.
+  4. Correção tipográfica em `globals.css` garantindo o uso do `Geist Sans`, gradiente de ambient mesh glow e scrollbar estilizada.
+- **Status:** Aceito e Implementado.

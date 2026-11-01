@@ -28,3 +28,11 @@ export async function getUSDtoBRLRate(): Promise<number> {
   // Fallback seguro caso a API de cotação oscile
   return 5.75;
 }
+
+/**
+ * Utilitário centralizado para formatar valor em dólar para Reais (BRL).
+ */
+export function formatBRL(priceUSD: number, rate: number = 5.75): string {
+  const brl = priceUSD * rate;
+  return brl.toFixed(2).replace('.', ',');
+}

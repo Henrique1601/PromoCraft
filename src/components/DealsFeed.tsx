@@ -12,11 +12,13 @@ import {
   Columns3,
   ChevronLeft,
   ChevronRight,
-  Star,
   Award,
+  RotateCcw,
 } from 'lucide-react';
 import { Deal, Store } from '@/types/deals';
 import { DealCard } from '@/components/DealCard';
+import { DealSkeleton } from '@/components/DealSkeleton';
+import { formatBRL } from '@/lib/currency';
 
 interface DealsFeedProps {
   initialDeals: Deal[];
@@ -24,21 +26,35 @@ interface DealsFeedProps {
   rate?: number;
 }
 
+interface FilterState {
+  search: string;
+  store: string;
+  sortBy: 'Deal Rating' | 'Savings' | 'Price';
+  underPrice: string;
+  onlyFree: boolean;
+  page: number;
+  pageSize: number;
+  minRating: string;
+  onlyAAA: boolean;
+}
+
+const INITIAL_FILTERS: FilterState = {
+  search: '',
+  store: '',
+  sortBy: 'Deal Rating',
+  underPrice: '',
+  onlyFree: false,
+  page: 0,
+  pageSize: 32,
+  minRating: '',
+  onlyAAA: false,
+};
+
 export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps) {
   const [deals, setDeals] = useState<Deal[]>(initialDeals);
-  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [suggestions, setSuggestions] = useState<Deal[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
-
-  const [selectedStore, setSelectedStore] = useState('');
-  const [sortBy, setSortBy] = useState<'Deal Rating' | 'Savings' | 'Price'>('Deal Rating');
-  const [underPrice, setUnderPrice] = useState<string>('');
-  const [minRating, setMinRating] = useState<string>('');
-  const [onlyAAA, setOnlyAAA] = useState(false);
-  const [onlyFree, setOnlyFree] = useState(false);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(32);
   const [viewMode, setViewMode] = useState<'grid' | 'compact' | 'list'>('grid');
   const [isPending, startTransition] = useTransition();
 
@@ -53,30 +69,27 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
 
   // Autocomplete debounced
   useEffect(() => {
-    if (!search || search.trim().length < 2) {
+    if (!filters.search || filters.search.trim().length < 2) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
     }
 
     const timer = setTimeout(async () => {
-      setIsSearchingSuggestions(true);
       try {
-        const res = await fetch(`/api/deals?title=${encodeURIComponent(search.trim())}&pageSize=5`);
+        const res = await fetch(`/api/deals?title=${encodeURIComponent(filters.search.trim())}&pageSize=5`);
         if (res.ok) {
           const data: Deal[] = await res.json();
           setSuggestions(data.slice(0, 5));
           setShowSuggestions(true);
         }
       } catch (err) {
-        console.error(err);
-      } finally {
-        setIsSearchingSuggestions(false);
+        console.error('Erro ao buscar sugestões:', err);
       }
     }, 280);
 
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [filters.search]);
 
   // Fechar autocomplete ao clicar fora
   useEffect(() => {
@@ -89,32 +102,26 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  async function handleFilter(
-    newSearch = search,
-    newStore = selectedStore,
-    newSort = sortBy,
-    newUnder = underPrice,
-    isFree = onlyFree,
-    newPage = page,
-    newPageSize = pageSize,
-    newRating = minRating,
-    isAAA = onlyAAA
-  ) {
+  // Dispatcher centralizado de filtros com transição limpa
+  function applyFilters(updates: Partial<FilterState>) {
+    const next: FilterState = { ...filters, ...updates };
+    setFilters(next);
     setShowSuggestions(false);
+
     startTransition(async () => {
       const params = new URLSearchParams();
-      if (newSearch.trim()) params.set('title', newSearch.trim());
-      if (newStore) params.set('storeID', newStore);
-      if (newSort) params.set('sortBy', newSort);
-      if (newRating) params.set('steamRating', newRating);
-      if (isAAA) params.set('AAA', '1');
-      params.set('pageNumber', newPage.toString());
-      params.set('pageSize', newPageSize.toString());
+      if (next.search.trim()) params.set('title', next.search.trim());
+      if (next.store) params.set('storeID', next.store);
+      if (next.sortBy) params.set('sortBy', next.sortBy);
+      if (next.minRating) params.set('steamRating', next.minRating);
+      if (next.onlyAAA) params.set('AAA', '1');
+      params.set('pageNumber', next.page.toString());
+      params.set('pageSize', next.pageSize.toString());
 
-      if (isFree) {
+      if (next.onlyFree) {
         params.set('upperPrice', '0');
-      } else if (newUnder) {
-        params.set('upperPrice', newUnder);
+      } else if (next.underPrice) {
+        params.set('upperPrice', next.underPrice);
       }
 
       try {
@@ -131,45 +138,46 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
 
   function changePage(newPage: number) {
     if (newPage < 0) return;
-    setPage(newPage);
-    handleFilter(search, selectedStore, sortBy, underPrice, onlyFree, newPage, pageSize, minRating, onlyAAA);
+    applyFilters({ page: newPage });
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function resetAllFilters() {
+    applyFilters({ ...INITIAL_FILTERS });
   }
 
   return (
     <div className="space-y-6">
       {/* Search & Main Filter Toolbar */}
-      <div className="flex flex-col gap-4 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4 backdrop-blur-md md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4 backdrop-blur-md md:flex-row md:items-center md:justify-between shadow-lg">
         {/* Search Input com Dropdown Autocomplete */}
         <div ref={searchContainerRef} className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
             placeholder="Buscar por jogo (ex: Elden Ring, Cyberpunk, Resident Evil)..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={filters.search}
+            onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
             onFocus={() => {
               if (suggestions.length > 0) setShowSuggestions(true);
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                setPage(0);
-                setShowSuggestions(false);
-                handleFilter(e.currentTarget.value, selectedStore, sortBy, underPrice, onlyFree, 0, pageSize, minRating, onlyAAA);
+                applyFilters({ search: e.currentTarget.value, page: 0 });
               }
             }}
-            className="w-full rounded-xl border border-zinc-800 bg-zinc-950/80 py-2.5 pl-10 pr-4 text-sm text-zinc-100 placeholder-zinc-500 transition focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="w-full rounded-xl border border-zinc-800 bg-zinc-950/90 py-2.5 pl-10 pr-4 text-sm text-zinc-100 placeholder-zinc-500 transition focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
 
           {/* Autocomplete Dropdown */}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/95 shadow-2xl backdrop-blur-xl">
-              <div className="p-2 text-[11px] font-semibold uppercase text-zinc-500 border-b border-zinc-800/80">
+            <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/95 shadow-2xl backdrop-blur-xl">
+              <div className="p-2.5 text-[11px] font-semibold uppercase text-zinc-500 border-b border-zinc-800/80">
                 Sugestões Rápidas:
               </div>
               <div className="divide-y divide-zinc-800/50">
                 {suggestions.map((sug) => {
-                  const sugPrice = (parseFloat(sug.salePrice) * rate).toFixed(2).replace('.', ',');
+                  const sugPrice = formatBRL(parseFloat(sug.salePrice), rate);
                   return (
                     <Link
                       key={sug.dealID}
@@ -178,7 +186,7 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
                       className="flex items-center justify-between p-2.5 transition hover:bg-zinc-900"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <img src={sug.thumb} alt={sug.title} className="h-9 w-16 rounded object-cover" />
+                        <img src={sug.thumb} alt={sug.title} className="h-9 w-16 rounded-lg object-cover border border-zinc-800" />
                         <div className="truncate">
                           <p className="text-xs font-semibold text-zinc-200 truncate">{sug.title}</p>
                           <span className="text-[10px] text-zinc-400">Score: {sug.dealRating}/10</span>
@@ -201,12 +209,8 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
         <div className="flex flex-wrap items-center gap-2">
           {/* Loja */}
           <select
-            value={selectedStore}
-            onChange={(e) => {
-              setSelectedStore(e.target.value);
-              setPage(0);
-              handleFilter(search, e.target.value, sortBy, underPrice, onlyFree, 0, pageSize, minRating, onlyAAA);
-            }}
+            value={filters.store}
+            onChange={(e) => applyFilters({ store: e.target.value, page: 0 })}
             className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs font-medium text-zinc-200 focus:border-emerald-500 focus:outline-none"
           >
             <option value="">Todas as Lojas</option>
@@ -219,13 +223,8 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
 
           {/* Ordenação */}
           <select
-            value={sortBy}
-            onChange={(e) => {
-              const val = e.target.value as any;
-              setSortBy(val);
-              setPage(0);
-              handleFilter(search, selectedStore, val, underPrice, onlyFree, 0, pageSize, minRating, onlyAAA);
-            }}
+            value={filters.sortBy}
+            onChange={(e) => applyFilters({ sortBy: e.target.value as any, page: 0 })}
             className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs font-medium text-zinc-200 focus:border-emerald-500 focus:outline-none"
           >
             <option value="Deal Rating">🔥 Melhor Negócio</option>
@@ -235,12 +234,8 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
 
           {/* Filtro de Avaliação Steam */}
           <select
-            value={minRating}
-            onChange={(e) => {
-              setMinRating(e.target.value);
-              setPage(0);
-              handleFilter(search, selectedStore, sortBy, underPrice, onlyFree, 0, pageSize, e.target.value, onlyAAA);
-            }}
+            value={filters.minRating}
+            onChange={(e) => applyFilters({ minRating: e.target.value, page: 0 })}
             className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs font-medium text-zinc-200 focus:border-emerald-500 focus:outline-none"
           >
             <option value="">Qualquer Nota</option>
@@ -251,13 +246,9 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
 
           {/* Teto de Preço */}
           <select
-            value={underPrice}
-            disabled={onlyFree}
-            onChange={(e) => {
-              setUnderPrice(e.target.value);
-              setPage(0);
-              handleFilter(search, selectedStore, sortBy, e.target.value, onlyFree, 0, pageSize, minRating, onlyAAA);
-            }}
+            value={filters.underPrice}
+            disabled={filters.onlyFree}
+            onChange={(e) => applyFilters({ underPrice: e.target.value, page: 0 })}
             className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs font-medium text-zinc-200 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
           >
             <option value="">Qualquer Preço</option>
@@ -269,14 +260,9 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
           {/* Botão Jogos AAA */}
           <button
             type="button"
-            onClick={() => {
-              const nextAAA = !onlyAAA;
-              setOnlyAAA(nextAAA);
-              setPage(0);
-              handleFilter(search, selectedStore, sortBy, underPrice, onlyFree, 0, pageSize, minRating, nextAAA);
-            }}
+            onClick={() => applyFilters({ onlyAAA: !filters.onlyAAA, page: 0 })}
             className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition border ${
-              onlyAAA
+              filters.onlyAAA
                 ? 'bg-purple-600 border-purple-500 text-white shadow-md shadow-purple-950/40'
                 : 'border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-purple-500 hover:text-purple-400'
             }`}
@@ -288,14 +274,9 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
           {/* Botão de Jogos Grátis */}
           <button
             type="button"
-            onClick={() => {
-              const nextFree = !onlyFree;
-              setOnlyFree(nextFree);
-              setPage(0);
-              handleFilter(search, selectedStore, sortBy, underPrice, nextFree, 0, pageSize, minRating, onlyAAA);
-            }}
+            onClick={() => applyFilters({ onlyFree: !filters.onlyFree, page: 0 })}
             className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition border ${
-              onlyFree
+              filters.onlyFree
                 ? 'bg-amber-400 border-amber-300 text-zinc-950 shadow-md shadow-amber-950/40'
                 : 'border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-amber-400 hover:text-amber-400'
             }`}
@@ -312,13 +293,9 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
         <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 text-xs">
           <span className="text-zinc-500 font-medium whitespace-nowrap">Lojas:</span>
           <button
-            onClick={() => {
-              setSelectedStore('');
-              setPage(0);
-              handleFilter(search, '', sortBy, underPrice, onlyFree, 0, pageSize, minRating, onlyAAA);
-            }}
+            onClick={() => applyFilters({ store: '', page: 0 })}
             className={`rounded-lg px-2.5 py-1 transition whitespace-nowrap ${
-              selectedStore === ''
+              filters.store === ''
                 ? 'bg-emerald-500 text-zinc-950 font-bold'
                 : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200'
             }`}
@@ -326,16 +303,11 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
             Todas
           </button>
           {popularStores.map((store) => {
-            const isSelected = selectedStore === store.storeID;
+            const isSelected = filters.store === store.storeID;
             return (
               <button
                 key={store.storeID}
-                onClick={() => {
-                  const next = isSelected ? '' : store.storeID;
-                  setSelectedStore(next);
-                  setPage(0);
-                  handleFilter(search, next, sortBy, underPrice, onlyFree, 0, pageSize, minRating, onlyAAA);
-                }}
+                onClick={() => applyFilters({ store: isSelected ? '' : store.storeID, page: 0 })}
                 className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 transition whitespace-nowrap ${
                   isSelected
                     ? 'bg-emerald-500 text-zinc-950 font-bold'
@@ -359,13 +331,8 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
           <div className="flex items-center gap-1.5 text-xs text-zinc-400">
             <span>Itens:</span>
             <select
-              value={pageSize}
-              onChange={(e) => {
-                const newSize = Number(e.target.value);
-                setPageSize(newSize);
-                setPage(0);
-                handleFilter(search, selectedStore, sortBy, underPrice, onlyFree, 0, newSize, minRating, onlyAAA);
-              }}
+              value={filters.pageSize}
+              onChange={(e) => applyFilters({ pageSize: Number(e.target.value), page: 0 })}
               className="rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-200 focus:outline-none"
             >
               <option value="16">16</option>
@@ -376,13 +343,13 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
           </div>
 
           {/* Seletor de Modo de Visualização */}
-          <div className="flex items-center rounded-xl border border-zinc-800 bg-zinc-900/80 p-0.5">
+          <div className="flex items-center rounded-xl border border-zinc-800 bg-zinc-900/80 p-0.5 shadow-inner">
             <button
               onClick={() => setViewMode('grid')}
               title="Grade Padrão"
               className={`rounded-lg p-1.5 transition ${
                 viewMode === 'grid'
-                  ? 'bg-emerald-500 text-zinc-950'
+                  ? 'bg-emerald-500 text-zinc-950 font-bold shadow'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
@@ -393,7 +360,7 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
               title="Grade Compacta"
               className={`rounded-lg p-1.5 transition ${
                 viewMode === 'compact'
-                  ? 'bg-emerald-500 text-zinc-950'
+                  ? 'bg-emerald-500 text-zinc-950 font-bold shadow'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
@@ -404,7 +371,7 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
               title="Lista Detalhada"
               className={`rounded-lg p-1.5 transition ${
                 viewMode === 'list'
-                  ? 'bg-emerald-500 text-zinc-950'
+                  ? 'bg-emerald-500 text-zinc-950 font-bold shadow'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
@@ -414,14 +381,9 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
         </div>
       </div>
 
-      {/* Deals Container */}
+      {/* Deals Container & Loading Skeletons */}
       {isPending ? (
-        <div className="flex h-64 items-center justify-center">
-          <div className="flex items-center gap-2 text-emerald-400">
-            <RefreshCw className="h-5 w-5 animate-spin" />
-            <span className="text-sm font-medium">Buscando as melhores ofertas...</span>
-          </div>
-        </div>
+        <DealSkeleton viewMode={viewMode} count={filters.pageSize > 32 ? 16 : 8} />
       ) : deals.length === 0 ? (
         <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/30 p-12 text-center">
           <Gamepad2 className="mx-auto h-12 w-12 text-zinc-600" />
@@ -429,6 +391,13 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
           <p className="mt-1 text-sm text-zinc-500">
             Tente remover alguns filtros ou buscar por outro termo.
           </p>
+          <button
+            onClick={resetAllFilters}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-zinc-950 transition hover:bg-emerald-400 shadow-lg shadow-emerald-950/40"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            <span>Limpar Todos os Filtros</span>
+          </button>
         </div>
       ) : (
         <div
@@ -455,8 +424,8 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
       {/* Pagination Controls */}
       <div className="flex items-center justify-between border-t border-zinc-800/80 pt-6">
         <button
-          onClick={() => changePage(page - 1)}
-          disabled={page === 0 || isPending}
+          onClick={() => changePage(filters.page - 1)}
+          disabled={filters.page === 0 || isPending}
           className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-emerald-500 hover:text-emerald-400 disabled:opacity-40 disabled:hover:border-zinc-800 disabled:hover:text-zinc-300"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -464,12 +433,12 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
         </button>
 
         <span className="text-xs font-medium text-zinc-400">
-          Página <b className="text-emerald-400">{page + 1}</b>
+          Página <b className="text-emerald-400">{filters.page + 1}</b>
         </span>
 
         <button
-          onClick={() => changePage(page + 1)}
-          disabled={deals.length < pageSize || isPending}
+          onClick={() => changePage(filters.page + 1)}
+          disabled={deals.length < filters.pageSize || isPending}
           className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-emerald-500 hover:text-emerald-400 disabled:opacity-40"
         >
           <span>Próxima Página</span>
