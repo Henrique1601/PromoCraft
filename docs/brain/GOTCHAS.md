@@ -29,3 +29,10 @@ Este documento registra armadilhas técnicas superadas e instruções preventiva
 ### 4. Postinstall do Prisma em Ambientes sem Prisma Global
 - **Sintoma:** Mensagem de erro durante instalação de pacotes caso o CLI do Prisma não esteja acessível.
 - **Prevenção:** O script de postinstall em `package.json` possui proteção de saída neutra: `"postinstall": "prisma skills sync || exit 0"`.
+
+---
+
+### 5. CheapShark API vs Marketplaces Cinzentos (GamersGate vs Eneba/Kinguin)
+- **Sintoma:** Tentativa de buscar ofertas da Eneba ou Kinguin na API do CheapShark resulta em ausência de dados.
+- **Causa Raiz:** A CheapShark mantém contratos de conformidade estritos com publishers e distribuidoras (Valve, CD Projekt, Capcom, etc.), agregando exclusivamente revendedores autorizados (GamersGate `storeID: 2`, Steam `storeID: 1`, GMG `storeID: 3`, Humble `storeID: 11`). Marketplaces de terceiros (mercado cinza/P2P) são banidos de suas rotas.
+- **Solução:** Modelo híbrido à la GG.deals: GamersGate é consumida nativamente via API CheapShark com ID `2`, enquanto Eneba, Kinguin e Nuuvem são integradas via deep links de busca parametrizada no componente `MarketplaceLinksCard` com disclaimer de procedência.

@@ -58,3 +58,14 @@ Este documento registra as decisões estratégicas e arquiteturais adotadas no d
   3. Criação do componente `DealSkeleton` para carregamento suave sem layout shift.
   4. Correção tipográfica em `globals.css` garantindo o uso do `Geist Sans`, gradiente de ambient mesh glow e scrollbar estilizada.
 - **Status:** Aceito e Implementado.
+
+---
+
+### ADR-008: Expansão de Lojas com GamersGate Nativa e Comparador de Marketplaces Híbrido (Eneba / Nuuvem / Kinguin) (v1.3.0)
+- **Contexto:** Demanda dos usuários por expansão de lojas, especificamente GamersGate e marketplaces populares como Eneba e Kinguin. A CheapShark agrega apenas lojas 100% autorizadas pelas desenvolvedoras (por compliance), deixando marketplaces P2P fora de sua API pública.
+- **Decisão:**
+  1. **GamersGate Nativa (`storeID: 2`):** Ativada nos filtros rápidos e dropdowns do feed principal (`DealsFeed.tsx`), com resolução de link direto oficial em `links.ts`.
+  2. **Comparador Híbrido de Marketplaces (`MarketplaceLinksCard.tsx`):** Adicionado à página de detalhes do jogo (`/game/[id]`), permitindo checar ofertas em tempo real na Eneba, Nuuvem e Kinguin com 1 clique.
+  3. **Transparência e Procedência Gamer:** Inclusão de badges de distinção (Revendedor Oficial vs Marketplace de Chaves) e aviso de responsabilidade gamer orientando conferência de reputação de vendedores e taxas de pagamento.
+  4. **Testes Unitários:** Expansão de `test/logic.test.mjs` para validar resolução de URLs da GamersGate, Humble Store e provedores de marketplace externo.
+- **Status:** Aceito e Implementado.

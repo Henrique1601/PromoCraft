@@ -12,8 +12,14 @@ function getDirectStoreUrl(dealID, storeID, steamAppID, gameTitle) {
   if (storeID === '1' && steamAppID && steamAppID !== '0') {
     return `https://store.steampowered.com/app/${steamAppID}/`;
   }
+  if (storeID === '2' && gameTitle) {
+    return `https://www.gamersgate.com/apps/?q=${encodeURIComponent(gameTitle)}`;
+  }
   if (storeID === '7' && gameTitle) {
     return `https://www.gog.com/en/games?query=${encodeURIComponent(gameTitle)}`;
+  }
+  if (storeID === '11' && gameTitle) {
+    return `https://www.humblebundle.com/store/search?sort=bestselling&search=${encodeURIComponent(gameTitle)}`;
   }
   if (storeID === '25' && gameTitle) {
     return `https://store.epicgames.com/pt-BR/browse?q=${encodeURIComponent(gameTitle)}`;
@@ -31,6 +37,27 @@ function getDirectStoreUrl(dealID, storeID, steamAppID, gameTitle) {
     return `https://store.steampowered.com/app/${steamAppID}/`;
   }
   return `https://www.cheapshark.com/redirect?dealID=${encodeURIComponent(dealID)}`;
+}
+
+// Resolução de marketplaces externos
+function getExternalMarketplaces(gameTitle) {
+  return [
+    {
+      name: 'Eneba',
+      type: 'marketplace',
+      url: `https://www.eneba.com/store/all?text=${encodeURIComponent(gameTitle)}`,
+    },
+    {
+      name: 'Nuuvem',
+      type: 'official',
+      url: `https://www.nuuvem.com/br-pt/catalog/search/${encodeURIComponent(gameTitle)}`,
+    },
+    {
+      name: 'Kinguin',
+      type: 'marketplace',
+      url: `https://www.kinguin.net/listing?active=1&hide_out_of_stock=1&phrase=${encodeURIComponent(gameTitle)}`,
+    },
+  ];
 }
 
 // Lógica de veredito do assistente de compra
@@ -82,9 +109,36 @@ describe('PromoCraft - Testes Unitários de Regra de Negócio & Clean Code', () 
       assert.strictEqual(url, 'https://www.gog.com/en/games?query=The%20Witcher%203');
     });
 
+    test('deve resolver link de busca da GamersGate quando storeID é 2', () => {
+      const url = getDirectStoreUrl('deal123', '2', null, 'Hollow Knight');
+      assert.strictEqual(url, 'https://www.gamersgate.com/apps/?q=Hollow%20Knight');
+    });
+
+    test('deve resolver link de busca da Humble Store quando storeID é 11', () => {
+      const url = getDirectStoreUrl('deal123', '11', null, 'Hades');
+      assert.strictEqual(url, 'https://www.humblebundle.com/store/search?sort=bestselling&search=Hades');
+    });
+
     test('deve retornar fallback oficial do CheapShark quando não houver mapeamento direto', () => {
       const url = getDirectStoreUrl('abc_deal_999');
       assert.strictEqual(url, 'https://www.cheapshark.com/redirect?dealID=abc_deal_999');
+    });
+  });
+
+  describe('Integração de Marketplaces Externos (Eneba, Nuuvem, Kinguin)', () => {
+    test('deve gerar URLs corretas de busca para marketplaces externos', () => {
+      const marketplaces = getExternalMarketplaces('Cyberpunk 2077');
+      assert.strictEqual(marketplaces.length, 3);
+      
+      const eneba = marketplaces.find((m) => m.name === 'Eneba');
+      assert.ok(eneba);
+      assert.strictEqual(eneba.url, 'https://www.eneba.com/store/all?text=Cyberpunk%202077');
+      assert.strictEqual(eneba.type, 'marketplace');
+
+      const nuuvem = marketplaces.find((m) => m.name === 'Nuuvem');
+      assert.ok(nuuvem);
+      assert.strictEqual(nuuvem.url, 'https://www.nuuvem.com/br-pt/catalog/search/Cyberpunk%202077');
+      assert.strictEqual(nuuvem.type, 'official');
     });
   });
 

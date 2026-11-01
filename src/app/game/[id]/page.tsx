@@ -8,6 +8,7 @@ import { PriceHistoryChart } from '@/components/PriceHistoryChart';
 import { DealVerdictCard } from '@/components/DealVerdictCard';
 import { CouponTracker } from '@/components/CouponTracker';
 import { SteamDeckBadge } from '@/components/SteamDeckBadge';
+import { MarketplaceLinksCard } from '@/components/MarketplaceLinksCard';
 import { getDirectStoreUrl } from '@/lib/links';
 import { getUSDtoBRLRate } from '@/lib/currency';
 
@@ -288,6 +289,9 @@ export default async function GameDetailPage({ params }: GamePageProps) {
             </table>
           </div>
         </div>
+
+        {/* Marketplaces & Lojas Externas (Eneba, Nuuvem, Kinguin) */}
+        <MarketplaceLinksCard title={game.info.title} />
       </main>
     </div>
   );

@@ -64,7 +64,7 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
   stores.forEach((s) => storeMap.set(s.storeID, s));
 
   const popularStores = stores.filter((s) =>
-    ['1', '3', '7', '11', '15', '25', '27'].includes(s.storeID)
+    ['1', '2', '3', '7', '11', '15', '25', '27'].includes(s.storeID)
   );
 
   // Autocomplete debounced
