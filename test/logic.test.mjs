@@ -60,6 +60,34 @@ function getExternalMarketplaces(gameTitle) {
   ];
 }
 
+// Funções de regionalização de pagamento
+function getPixPrice(priceBRL, discountPercent = 10) {
+  const finalPrice = Math.max(0, priceBRL * (1 - discountPercent / 100));
+  return {
+    discountPercent,
+    finalPriceBRL: finalPrice,
+    formatted: finalPrice.toFixed(2).replace('.', ','),
+  };
+}
+
+function getInstallmentInfo(priceBRL, maxInstallments = 3) {
+  if (priceBRL < 30) return null;
+  const installments = Math.min(maxInstallments, Math.floor(priceBRL / 15));
+  if (installments <= 1) return null;
+  const valuePerInstallment = (priceBRL / installments).toFixed(2).replace('.', ',');
+  return { installments, valuePerInstallment };
+}
+
+function getMarketplaceFeeEstimate(priceBRL) {
+  const serviceFee = priceBRL * 0.07 + 2.5;
+  const total = priceBRL + serviceFee;
+  return {
+    serviceFeeBRL: serviceFee,
+    formattedFee: serviceFee.toFixed(2).replace('.', ','),
+    formattedTotal: total.toFixed(2).replace('.', ','),
+  };
+}
+
 // Lógica de veredito do assistente de compra
 function getDealVerdict(currentPrice, cheapestEverPrice, retailPrice) {
   const savingsPercent = retailPrice > 0 ? Math.round(((retailPrice - currentPrice) / retailPrice) * 100) : 0;
@@ -177,6 +205,34 @@ describe('PromoCraft - Testes Unitários de Regra de Negócio & Clean Code', () 
       assert.strictEqual(isSuperDeal(80, '8.0'), true);
       assert.strictEqual(isSuperDeal(50, '9.7'), true);
       assert.strictEqual(isSuperDeal(40, '7.0'), false);
+    });
+  });
+
+  describe('Regionalização Financeira Gamer (Pix, Parcelamento & Taxas)', () => {
+    test('deve calcular corretamente 10% de desconto à vista no Pix', () => {
+      const pix = getPixPrice(100.0);
+      assert.strictEqual(pix.finalPriceBRL, 90.0);
+      assert.strictEqual(pix.formatted, '90,00');
+    });
+
+    test('deve calcular parcelas em até 3x sem juros para valores acima de R$ 30', () => {
+      const plan = getInstallmentInfo(90.0, 3);
+      assert.ok(plan);
+      assert.strictEqual(plan.installments, 3);
+      assert.strictEqual(plan.valuePerInstallment, '30,00');
+    });
+
+    test('não deve gerar parcelamento para compras inferiores a R$ 30', () => {
+      const plan = getInstallmentInfo(25.0);
+      assert.strictEqual(plan, null);
+    });
+
+    test('deve estimar taxas de intermediação de marketplace de forma transparente', () => {
+      const fee = getMarketplaceFeeEstimate(100.0);
+      // 100 * 0.07 + 2.5 = 9.5
+      assert.strictEqual(fee.serviceFeeBRL, 9.5);
+      assert.strictEqual(fee.formattedFee, '9,50');
+      assert.strictEqual(fee.formattedTotal, '109,50');
     });
   });
 });
