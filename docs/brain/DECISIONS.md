@@ -82,3 +82,17 @@ Este documento registra as decisões estratégicas e arquiteturais adotadas no d
   5. **Cards Elegantes e Sedutores (`DealCard.tsx`):** Efeito hover refinado com iluminação de borda, badges com gradiente energético, selos de lojas oficiais, compatibilidade Steam Deck e ações rápidas ("Comparar" e "Ir à Loja").
   6. **Testes Unitários Automatizados:** Testes expandidos em `test/logic.test.mjs` cobrindo conversão de faixas de preço em Reais e categorização de super negócios.
 - **Status:** Aceito e Implementado.
+
+---
+
+### ADR-010: Implementação das 5 Frentes Estratégicas Gamer (v1.5.0)
+- **Contexto:** Elevar o PromoCraft ao status de plataforma definitiva gamer, fornecendo ferramentas práticas diárias de economia e descoberta além do agregador de preços.
+- **Decisão:**
+  1. **Frente 1 (Descoberta & Steam Sync):** Criação do modal `SteamWishlistModal.tsx` para sincronização de lista de desejos do Steam em 1 clique e inclusão da seção de Gêneros Populares na `SidebarFilters.tsx`.
+  2. **Frente 2 (Motor de Alertas Reais de Preço):** Criação do modal `PriceAlertModal.tsx` integrado aos cards de jogos, com suporte a Webhooks do Discord e teste instantâneo de notificação.
+  3. **Frente 3 (PromoCraft AI Concierge):** Endpoint semântico `/api/ai-concierge` e modal interativo `AiConciergeModal.tsx` para busca em linguagem natural com justificativas gamer e pontuação inteligente.
+  4. **Frente 4 (PWA Completo & Suporte Steam Deck):** Configuração do `manifest.json` com ícones dedicados e criação do `BottomNav.tsx` para navegação touch fluida em dispositivos móveis e navegadores portáteis.
+  5. **Frente 5 (Regionalização Financeira Pix & Parcelamento):** Módulo `payment.ts` com cálculo de 10% de desconto à vista no Pix, parcelamento em até 3x sem juros e estimativa transparente de taxas em marketplaces.
+  6. **Controles Globais:** Integração na Navbar através do componente `HomeClientControls.tsx`.
+  7. **Cobertura de Testes:** Expansão para 20 testes unitários automatizados cobrindo cálculo financeiro Pix, parcelamento e estimativas de taxas.
+- **Status:** Aceito e Implementado.

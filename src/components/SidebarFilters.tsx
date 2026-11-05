@@ -15,6 +15,7 @@ import {
   ArrowUpDown,
   X,
   Check,
+  Tag,
 } from 'lucide-react';
 import { Store } from '@/types/deals';
 
@@ -180,7 +181,47 @@ export function SidebarFilters({
         </div>
       </div>
 
-      {/* 2. Lojas Oficiais */}
+      {/* 2. Gêneros Populares */}
+      <div>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3 flex items-center gap-1.5">
+          <Tag className="h-3.5 w-3.5 text-emerald-400" />
+          <span>Gêneros Populares</span>
+        </h4>
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            'Ação',
+            'RPG',
+            'Estratégia',
+            'Terror',
+            'Indie',
+            'Roguelike',
+            'Soulslike',
+            'Cooperativo',
+          ].map((genre) => {
+            const isSelected = filters.search.toLowerCase() === genre.toLowerCase();
+            return (
+              <button
+                key={genre}
+                onClick={() =>
+                  onFilterChange({
+                    search: isSelected ? '' : genre,
+                    page: 0,
+                  })
+                }
+                className={`rounded-xl px-2.5 py-1 text-xs font-semibold transition border ${
+                  isSelected
+                    ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400 shadow-sm font-bold'
+                    : 'border-zinc-800 bg-zinc-900/60 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                }`}
+              >
+                {genre}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3. Lojas Oficiais */}
       <div>
         <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3 flex items-center gap-1.5">
           <StoreIcon className="h-3.5 w-3.5 text-emerald-400" />

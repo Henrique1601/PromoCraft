@@ -4,6 +4,7 @@ import { DealsFeed } from '@/components/DealsFeed';
 import { HeroShowcase } from '@/components/HeroShowcase';
 import { TopicsShelf } from '@/components/TopicsShelf';
 import { GsapBackground } from '@/components/GsapBackground';
+import { HomeClientControls } from '@/components/HomeClientControls';
 import Link from 'next/link';
 import { Sparkles, Tag, ShieldCheck, DollarSign, Flame, Gamepad2, ShoppingBag } from 'lucide-react';
 
@@ -56,6 +57,8 @@ export default async function HomePage() {
               <span>Minha Wishlist</span>
             </Link>
 
+            <HomeClientControls />
+
             <div className="hidden sm:flex items-center gap-1.5 text-zinc-400">
               <ShieldCheck className="h-4 w-4 text-emerald-400" />
               <span>Lojas 100% Oficiais</span>
@@ -65,7 +68,7 @@ export default async function HomePage() {
       </header>
 
       {/* Main Content Showcase */}
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-10">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 pb-24 lg:pb-10 space-y-10">
         {/* 1. Hero Showcase Interativo estilo Nuuvem */}
         <HeroShowcase deals={initialDeals} stores={stores} rate={rate} />
 
