@@ -51,9 +51,9 @@ export default async function HomePage() {
 
             <Link
               href="/wishlist"
-              className="flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/90 px-3.5 py-1.5 font-bold text-zinc-200 transition hover:border-emerald-500 hover:text-emerald-400 shadow-sm"
+              className="group flex items-center gap-1.5 rounded-xl border border-zinc-700/80 bg-zinc-900/90 px-3.5 py-1.5 font-bold text-zinc-200 transition hover:border-emerald-500 hover:bg-zinc-800 hover:text-white shadow-sm active:scale-[0.98]"
             >
-              <Tag className="h-3.5 w-3.5 text-emerald-400" />
+              <Tag className="h-3.5 w-3.5 text-emerald-400 transition group-hover:scale-110" />
               <span>Minha Wishlist</span>
             </Link>
 

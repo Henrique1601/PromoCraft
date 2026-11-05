@@ -108,3 +108,14 @@ Este documento registra as decisões estratégicas e arquiteturais adotadas no d
   4. **Sincronização em Tempo Real:** Evento global customizado `wishlist-updated` e listener de `storage` para sincronizar automaticamente páginas, modais e contadores sem recarregamento forçado.
   5. **Cobertura de Testes Unitários:** Expansão da suíte para 27 testes unitários automatizados em `test/logic.test.mjs`.
 - **Status:** Aceito e Implementado.
+
+---
+
+### ADR-012: Padrão Ouro de Modais com React Portal, Trava de Scroll e Design Refinado na Navbar (v1.5.2)
+- **Contexto:** Relato de bug visual nos modais acionados pelos botões da navbar (`AiConciergeModal`, `SteamWishlistModal` e `PriceAlertModal`). O cabeçalho dos modais ficava cortado no topo da janela do navegador devido à criação de um *Containing Block* isolado decorrente de `backdrop-filter: blur(...)` e `sticky` no `<header>`, impedindo o comportamento correto de `position: fixed; inset: 0`.
+- **Decisão:**
+  1. **Teletransporte com React Portal:** Implementação de `createPortal(modalContent, document.body)` em todos os modais da aplicação com verificação segura de hidratação SSR (`mounted`).
+  2. **Camada Global Z-Index e Scroll Seguro:** Elevação da camada para `z-[100]`, inclusão de `overflow-y-auto` no container externo e centralização vertical com `my-auto`, impedindo clipping em telas com altura reduzida (laptops, janelas restauradas, barras de favoritos duplas).
+  3. **Trava de Scroll & Acessibilidade:** Bloqueio do scroll do `body` enquanto o modal estiver aberto e fechamento universal ao pressionar `Escape`.
+  4. **Polish Visual dos Botões da Navbar:** Estilização com gradientes sutis, microinterações tátil no clique (`active:scale-[0.98]`), efeito glow e badges indicadores.
+- **Status:** Aceito e Implementado.

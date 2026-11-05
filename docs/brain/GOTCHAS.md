@@ -65,3 +65,14 @@ Este documento registra armadilhas técnicas superadas e instruções preventiva
   3. Implementar parsing textual seguro (`parseSteamWishlistJson`) para prevenir quebras por HTML.
   4. Tratar qualquer erro de persistência SQLite como secundário e não-bloqueante na rota `/api/wishlist/import-steam`, devolvendo a coleção estruturada de jogos para que o cliente grave imediatamente no `localStorage` (`promocraft_wishlist_v1`), garantindo persistência imediata mesmo em containers serverless efêmeros (Arquitetura Híbrida).
 
+---
+
+### 9. Containing Block de CSS em Ancestrais com `backdrop-filter` ou `transform` (Modais Cortados)
+- **Sintoma:** Modais abertos a partir de botões da barra de navegação ficavam cortados no topo (clipped), descentralizados ou com o botão de fechar e cabeçalho ocultos atrás do navegador.
+- **Causa Raiz:** Pela especificação do CSS W3C, qualquer elemento ancestral que declare `backdrop-filter`, `transform`, `filter` ou `perspective` diferente de `none` torna-se obrigatoriamente o **Containing Block** para todos os seus elementos descendentes com `position: fixed`. Como o componente `<header>` possui a classe `backdrop-blur-xl`, os modais instanciados dentro dele calculavam suas coordenadas relativas ao header e não à tela (`viewport`). Em telas com barras de favoritos múltiplas ou viewports menores, o flexbox empurrava o cabeçalho do modal para fora da tela.
+- **Solução:**
+  1. Utilizar `createPortal(modalContent, document.body)` com montagem segura SSR (`mounted`) para teleportar o modal diretamente para a raiz do documento, isolando-o de qualquer ancestral com `backdrop-filter` ou `transform`.
+  2. Aplicar `overflow-y-auto` e `min-h-screen` no container externo do portal, com `my-auto` no cartão central, garantindo que mesmo em janelas baixas o modal nunca seja cortado.
+  3. Travar o scroll da página principal com `document.body.style.overflow = 'hidden'` e habilitar atalho `Escape` para fechar.
+
+
