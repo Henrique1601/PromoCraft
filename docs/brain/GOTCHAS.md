@@ -50,3 +50,18 @@ Este documento registra armadilhas técnicas superadas e instruções preventiva
 - **Sintoma:** Falha no step de `Build Next.js Application` do GitHub Actions com erro `Type 'string' is not assignable to type 'number'` ao invocar `fetchDeals`.
 - **Causa Raiz:** A interface `DealsQueryParams` em `src/lib/cheapshark.ts` define propriedades numéricas estritas (`upperPrice?: number`, `lowerPrice?: number`, `steamRating?: number`). A passagem de literais de string (como `'6'`) é rejeitada pelo compilador TypeScript no build estrito do CI.
 - **Prevenção:** Utilizar sempre números literais (`upperPrice: 6`) ou coerção numérica explícita (`Number(val)` / `parseFloat(val)`).
+
+---
+
+### 8. Resiliência de SQLite e Importação Steam em Ambientes Serverless (Netlify/AWS Lambda)
+- **Sintoma:** Erro 500 ao chamar `/api/wishlist/import-steam` com mensagem `Failed to load resource: the server responded with a status of 500 ()`.
+- **Causa Raiz:** 
+  1. Em runtimes serverless (como o plugin Next.js do Netlify ou AWS Lambda), o sistema de arquivos `/var/task` é estritamente somente leitura (`read-only`). Tentar criar diretórios (`mkdirSync`) ou abrir arquivos SQLite no diretório de trabalho padrão estoura a exceção `EROFS: read-only file system`.
+  2. A API pública da Steam utiliza endpoints distintos para perfis com nome customizado (`/wishlist/id/<vanity>/`) e contas com identificador numérico SteamID64 de 17 dígitos (`/wishlist/profiles/<steamid64>/`). Chamar `/id/` com um SteamID64 redireciona ou retorna HTML de login.
+  3. `res.json()` sobre respostas HTML da Steam lança `SyntaxError` não tratado, quebrando a rota de API.
+- **Solução:**
+  1. Em `src/lib/db.ts`, detectar ambientes serverless (`NETLIFY`, `AWS_LAMBDA_FUNCTION_NAME`, `VERCEL`, `LAMBDA_TASK_ROOT`) e redirecionar o banco SQLite para `/tmp/promocraft.db`, com fallback gracioso automático para banco em memória (`:memory:`) caso o acesso a disco seja bloqueado.
+  2. Isolar a lógica em `src/lib/steam.ts` com o utilitário `parseSteamInput`, que detecta se o identificador é um SteamID64 numérico (`/^\d{17}$/`) ou Vanity URL, montando a URL primária correta e mantendo a rota alternativa como fallback automático.
+  3. Implementar parsing textual seguro (`parseSteamWishlistJson`) para prevenir quebras por HTML.
+  4. Tratar qualquer erro de persistência SQLite como secundário e não-bloqueante na rota `/api/wishlist/import-steam`, devolvendo a coleção estruturada de jogos para que o cliente grave imediatamente no `localStorage` (`promocraft_wishlist_v1`), garantindo persistência imediata mesmo em containers serverless efêmeros (Arquitetura Híbrida).
+

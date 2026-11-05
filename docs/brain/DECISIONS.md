@@ -96,3 +96,15 @@ Este documento registra as decisões estratégicas e arquiteturais adotadas no d
   6. **Controles Globais:** Integração na Navbar através do componente `HomeClientControls.tsx`.
   7. **Cobertura de Testes:** Expansão para 20 testes unitários automatizados cobrindo cálculo financeiro Pix, parcelamento e estimativas de taxas.
 - **Status:** Aceito e Implementado.
+
+---
+
+### ADR-011: Resiliência de SQLite em Serverless e Importação Robusta da Wishlist Steam (v1.5.1)
+- **Contexto:** A rota `/api/wishlist/import-steam` apresentava erro 500 no ambiente serverless (Netlify). As causas identificadas foram: (1) filesystem `/var/task` estritamente read-only, falhando na escrita do SQLite em `data/promocraft.db`, (2) incompatibilidade com identificadores numéricos SteamID64 (17 dígitos), que requerem a rota `/wishlist/profiles/` e não `/wishlist/id/`, e (3) falhas de parsing JSON com `res.json()` ao receber respostas HTML de redirecionamento ou páginas privadas da Steam.
+- **Decisão:**
+  1. **SQLite Resiliente em Serverless (`src/lib/db.ts`):** Detecção automática de ambiente serverless (`NETLIFY`, `AWS_LAMBDA_FUNCTION_NAME`, `VERCEL`, `LAMBDA_TASK_ROOT`) gravando em `/tmp/promocraft.db`, com fallback instantâneo e gracioso para `:memory:` caso o acesso a disco seja bloqueado.
+  2. **Módulo de Integração Steam (`src/lib/steam.ts`):** Funções utilitárias puras `parseSteamInput`, `getSteamWishlistUrls` e `parseSteamWishlistJson`. Suporte completo e transparente a Vanity URLs e perfis com SteamID64 de 17 dígitos, com estratégia de fallback mútuo entre `/id/` e `/profiles/`.
+  3. **Tolerância a Falhas & Wishlist Híbrida (`/api/wishlist/import-steam` e `SteamWishlistModal.tsx`):** A rota de API retorna os objetos estruturados dos jogos com status 200 (ou mensagens descritivas amigáveis em caso de wishlist vazia/privada). Qualquer indisponibilidade de banco de dados não quebra a resposta HTTP, e o frontend grava imediatamente os itens importados no `localStorage` do cliente sob a chave `promocraft_wishlist_v1`.
+  4. **Sincronização em Tempo Real:** Evento global customizado `wishlist-updated` e listener de `storage` para sincronizar automaticamente páginas, modais e contadores sem recarregamento forçado.
+  5. **Cobertura de Testes Unitários:** Expansão da suíte para 27 testes unitários automatizados em `test/logic.test.mjs`.
+- **Status:** Aceito e Implementado.

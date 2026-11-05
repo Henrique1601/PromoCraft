@@ -88,6 +88,59 @@ function getMarketplaceFeeEstimate(priceBRL) {
   };
 }
 
+// Lógica de parsing e endpoints Steam
+function parseSteamInput(input) {
+  if (!input || typeof input !== 'string') {
+    return { identifier: '', isSteamId64: false };
+  }
+  const rawInput = input.trim();
+  let cleaned = rawInput
+    .replace(/^https?:\/\/(www\.)?steamcommunity\.com\/(id|profiles)\//i, '')
+    .replace(/^https?:\/\/(www\.)?store\.steampowered\.com\/wishlist\/(id|profiles)\//i, '')
+    .replace(/\/.*$/, '')
+    .trim();
+  cleaned = cleaned.replace(/[?#].*$/, '').trim();
+  const isSteamId64 = /^\d{17}$/.test(cleaned);
+  return { identifier: cleaned, isSteamId64 };
+}
+
+function getSteamWishlistUrls(input) {
+  const { identifier, isSteamId64 } = parseSteamInput(input);
+  if (!identifier) {
+    return { primaryUrl: '', fallbackUrl: '', identifier: '', isSteamId64: false };
+  }
+  const encoded = encodeURIComponent(identifier);
+  if (isSteamId64) {
+    return {
+      primaryUrl: `https://store.steampowered.com/wishlist/profiles/${encoded}/wishlistdata/?p=0`,
+      fallbackUrl: `https://store.steampowered.com/wishlist/id/${encoded}/wishlistdata/?p=0`,
+      identifier,
+      isSteamId64: true,
+    };
+  }
+  return {
+    primaryUrl: `https://store.steampowered.com/wishlist/id/${encoded}/wishlistdata/?p=0`,
+    fallbackUrl: `https://store.steampowered.com/wishlist/profiles/${encoded}/wishlistdata/?p=0`,
+    identifier,
+    isSteamId64: false,
+  };
+}
+
+function parseSteamWishlistJson(rawText) {
+  if (!rawText || typeof rawText !== 'string') return {};
+  const trimmed = rawText.trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return {};
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
 // Lógica de veredito do assistente de compra
 function getDealVerdict(currentPrice, cheapestEverPrice, retailPrice) {
   const savingsPercent = retailPrice > 0 ? Math.round(((retailPrice - currentPrice) / retailPrice) * 100) : 0;
@@ -233,6 +286,70 @@ describe('PromoCraft - Testes Unitários de Regra de Negócio & Clean Code', () 
       assert.strictEqual(fee.serviceFeeBRL, 9.5);
       assert.strictEqual(fee.formattedFee, '9,50');
       assert.strictEqual(fee.formattedTotal, '109,50');
+    });
+  });
+
+  describe('Integração e Normalização Steam (Vanity URL & SteamID64)', () => {
+    test('deve extrair identificador de link com Vanity URL', () => {
+      const parsed = parseSteamInput('https://steamcommunity.com/id/gaben/');
+      assert.strictEqual(parsed.identifier, 'gaben');
+      assert.strictEqual(parsed.isSteamId64, false);
+    });
+
+    test('deve extrair SteamID64 numérico de 17 dígitos a partir de link profiles', () => {
+      const parsed = parseSteamInput('https://steamcommunity.com/profiles/76561198012345678/');
+      assert.strictEqual(parsed.identifier, '76561198012345678');
+      assert.strictEqual(parsed.isSteamId64, true);
+    });
+
+    test('deve reconhecer input direto de SteamID64 de 17 dígitos sem protocolo', () => {
+      const parsed = parseSteamInput('76561198000000001');
+      assert.strictEqual(parsed.identifier, '76561198000000001');
+      assert.strictEqual(parsed.isSteamId64, true);
+    });
+
+    test('deve reconhecer input direto de Vanity username sem protocolo', () => {
+      const parsed = parseSteamInput('henrique_gamer');
+      assert.strictEqual(parsed.identifier, 'henrique_gamer');
+      assert.strictEqual(parsed.isSteamId64, false);
+    });
+
+    test('deve gerar URLs corretas para SteamID64 priorizando /profiles/ com fallback /id/', () => {
+      const urls = getSteamWishlistUrls('76561198012345678');
+      assert.strictEqual(
+        urls.primaryUrl,
+        'https://store.steampowered.com/wishlist/profiles/76561198012345678/wishlistdata/?p=0'
+      );
+      assert.strictEqual(
+        urls.fallbackUrl,
+        'https://store.steampowered.com/wishlist/id/76561198012345678/wishlistdata/?p=0'
+      );
+    });
+
+    test('deve gerar URLs corretas para Vanity priorizando /id/ com fallback /profiles/', () => {
+      const urls = getSteamWishlistUrls('https://steamcommunity.com/id/gaben');
+      assert.strictEqual(
+        urls.primaryUrl,
+        'https://store.steampowered.com/wishlist/id/gaben/wishlistdata/?p=0'
+      );
+      assert.strictEqual(
+        urls.fallbackUrl,
+        'https://store.steampowered.com/wishlist/profiles/gaben/wishlistdata/?p=0'
+      );
+    });
+
+    test('deve fazer parsing seguro de JSON da Steam sem quebrar em caso de HTML de login ou página privada', () => {
+      const htmlResponse = '<!DOCTYPE html><html><head><title>Steam Community</title></head><body>Login required</body></html>';
+      const parsedHtml = parseSteamWishlistJson(htmlResponse);
+      assert.deepStrictEqual(parsedHtml, {});
+
+      const validJson = JSON.stringify({
+        '105600': { name: 'Terraria', capsule: 'https://cdn.steam.com/header.jpg' },
+        '730': { name: 'Counter-Strike 2', capsule: 'https://cdn.steam.com/cs2.jpg' },
+      });
+      const parsedJson = parseSteamWishlistJson(validJson);
+      assert.strictEqual(parsedJson['105600'].name, 'Terraria');
+      assert.strictEqual(parsedJson['730'].name, 'Counter-Strike 2');
     });
   });
 });

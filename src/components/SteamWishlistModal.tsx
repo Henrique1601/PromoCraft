@@ -9,6 +9,8 @@ interface SteamWishlistModalProps {
   onSuccess?: () => void;
 }
 
+const LOCAL_STORAGE_KEY = 'promocraft_wishlist_v1';
+
 export function SteamWishlistModal({ isOpen, onClose, onSuccess }: SteamWishlistModalProps) {
   const [steamInput, setSteamInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,7 +18,15 @@ export function SteamWishlistModal({ isOpen, onClose, onSuccess }: SteamWishlist
     success?: boolean;
     importedCount?: number;
     foundOnSteam?: number;
-    importedGames?: string[];
+    importedGames?: Array<{
+      id: string;
+      gameID: string;
+      title: string;
+      thumb?: string;
+      steamAppID?: string;
+      currentBestPrice?: number | null;
+    }> | string[];
+    message?: string;
     error?: string;
   } | null>(null);
 
@@ -38,14 +48,48 @@ export function SteamWishlistModal({ isOpen, onClose, onSuccess }: SteamWishlist
 
       const data = await res.json();
 
-      if (res.ok) {
+      if (res.ok && data.success) {
+        // Persistência no localStorage (Arquitetura Híbrida)
+        if (data.importedGames && Array.isArray(data.importedGames) && data.importedGames.length > 0) {
+          try {
+            const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+            const existing = raw ? JSON.parse(raw) : [];
+            const existingIds = new Set(existing.map((item: any) => item.gameID));
+
+            const newItems = data.importedGames
+              .filter((g: any) => typeof g === 'object' && g.gameID && !existingIds.has(g.gameID))
+              .map((g: any) => ({
+                id: g.id || `local_${Date.now()}_${g.gameID}`,
+                gameID: g.gameID,
+                title: g.title,
+                thumb: g.thumb,
+                steamAppID: g.steamAppID,
+                currentBestPrice: g.currentBestPrice || g.salePrice,
+                cheapestPriceEver: g.cheapestPriceEver || null,
+                createdAt: g.createdAt || new Date().toISOString(),
+              }));
+
+            if (newItems.length > 0) {
+              const merged = [...newItems, ...existing];
+              localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+            }
+
+            // Notifica outros componentes da aplicação
+            window.dispatchEvent(new Event('wishlist-updated'));
+          } catch (storageErr) {
+            console.warn('Falha ao gravar importação no localStorage:', storageErr);
+          }
+        }
+
         setResult(data);
         if (onSuccess) onSuccess();
       } else {
-        setResult({ error: data.error || 'Falha ao sincronizar lista de desejos do Steam.' });
+        setResult({
+          error: data.error || data.message || 'Falha ao sincronizar lista de desejos do Steam.',
+        });
       }
     } catch (err: any) {
-      setResult({ error: 'Erro de conexão com o servidor. Tente novamente.' });
+      setResult({ error: 'Erro de conexão com o servidor. Tente novamente mais tarde.' });
     } finally {
       setLoading(false);
     }
@@ -93,7 +137,7 @@ export function SteamWishlistModal({ isOpen, onClose, onSuccess }: SteamWishlist
             </label>
             <input
               type="text"
-              placeholder="Ex: https://steamcommunity.com/id/seu_usuario ou seu_usuario"
+              placeholder="Ex: seu_usuario ou 76561198... ou link do perfil"
               value={steamInput}
               onChange={(e) => setSteamInput(e.target.value)}
               disabled={loading}
@@ -134,6 +178,17 @@ export function SteamWishlistModal({ isOpen, onClose, onSuccess }: SteamWishlist
                   <span>{result.error}</span>
                 </div>
               </div>
+            ) : result.foundOnSteam === 0 ? (
+              <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-950/20 p-4 text-xs text-amber-300">
+                <AlertCircle className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block">Nenhum jogo encontrado</span>
+                  <span>
+                    {result.message ||
+                      'Não encontramos jogos públicos nesta conta. Verifique se a sua Lista de Desejos está configurada como Pública no Steam.'}
+                  </span>
+                </div>
+              </div>
             ) : (
               <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-4 text-xs text-emerald-300 space-y-2">
                 <div className="flex items-center gap-2 font-bold text-white">
@@ -144,10 +199,11 @@ export function SteamWishlistModal({ isOpen, onClose, onSuccess }: SteamWishlist
                   Encontramos <b>{result.foundOnSteam}</b> jogos no Steam e adicionamos <b>{result.importedCount}</b> ofertas ativas à sua Wishlist local.
                 </p>
                 {result.importedGames && result.importedGames.length > 0 && (
-                  <div className="mt-2 max-h-32 overflow-y-auto space-y-1 pr-1 text-[11px] text-zinc-400 border-t border-emerald-500/20 pt-2">
-                    {result.importedGames.map((game, idx) => (
-                      <div key={idx} className="truncate">• {game}</div>
-                    ))}
+                  <div className="mt-2 max-h-36 overflow-y-auto space-y-1 pr-1 text-[11px] text-zinc-400 border-t border-emerald-500/20 pt-2">
+                    {result.importedGames.map((game: any, idx: number) => {
+                      const title = typeof game === 'string' ? game : game.title;
+                      return <div key={idx} className="truncate">• {title}</div>;
+                    })}
                   </div>
                 )}
               </div>

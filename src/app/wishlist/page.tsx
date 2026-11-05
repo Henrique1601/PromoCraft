@@ -85,6 +85,18 @@ export default function WishlistPage() {
 
   useEffect(() => {
     loadWishlist();
+
+    const handleSync = () => {
+      loadWishlist();
+    };
+
+    window.addEventListener('wishlist-updated', handleSync);
+    window.addEventListener('storage', handleSync);
+
+    return () => {
+      window.removeEventListener('wishlist-updated', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, []);
 
   async function removeItem(gameID: string) {
@@ -134,23 +146,50 @@ export default function WishlistPage() {
       const res = await fetch('/api/wishlist/import-steam', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ steamInput }),
+        body: JSON.stringify({ steamInput: steamInput.trim() }),
       });
       const data = await res.json();
-      if (data.success) {
-        if (data.importedCount > 0) {
-          setImportStatus(`Sucesso! ${data.importedCount} jogos foram importados da sua lista Steam.`);
+      if (res.ok && data.success) {
+        if (data.importedCount > 0 && Array.isArray(data.importedGames)) {
+          // Persistência direta no localStorage (Wishlist Híbrida)
+          try {
+            const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+            const existing = raw ? JSON.parse(raw) : [];
+            const existingIds = new Set(existing.map((i: any) => i.gameID));
+            const newItems = data.importedGames
+              .filter((g: any) => typeof g === 'object' && g.gameID && !existingIds.has(g.gameID))
+              .map((g: any) => ({
+                id: g.id || `local_${Date.now()}_${g.gameID}`,
+                gameID: g.gameID,
+                title: g.title,
+                thumb: g.thumb,
+                steamAppID: g.steamAppID,
+                currentBestPrice: g.currentBestPrice || g.salePrice,
+                cheapestPriceEver: g.cheapestPriceEver || null,
+                createdAt: g.createdAt || new Date().toISOString(),
+              }));
+
+            const merged = [...newItems, ...existing];
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+            setItems(merged);
+            window.dispatchEvent(new Event('wishlist-updated'));
+          } catch (e) {
+            console.warn('Erro ao atualizar localStorage após importação:', e);
+          }
+
+          setImportStatus(`Sucesso! ${data.importedCount} jogos foram importados e sincronizados com sua wishlist.`);
           loadWishlist();
         } else {
           setImportStatus(
-            'Nenhum jogo encontrado na lista de desejos pública. Certifique-se de que o perfil ou a lista de desejos do Steam esteja configurada como PÚBLICA.'
+            data.message ||
+              'Nenhum jogo encontrado na lista de desejos pública. Certifique-se de que o perfil ou a lista de desejos do Steam esteja configurada como PÚBLICA.'
           );
         }
       } else {
-        setImportStatus(`Aviso: ${data.error || 'Não foi possível importar'}`);
+        setImportStatus(`Aviso: ${data.error || 'Não foi possível importar a lista de desejos'}`);
       }
     } catch (err: any) {
-      setImportStatus('Erro de conexão ao tentar importar do Steam.');
+      setImportStatus('Erro de conexão ao tentar importar do Steam. Tente novamente mais tarde.');
     } finally {
       setIsImporting(false);
     }
