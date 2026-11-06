@@ -220,7 +220,7 @@ export function GameVersusModal({ isOpen, onClose, game1 }: GameVersusModalProps
                     Preço no Pix à vista (-10%)
                   </span>
                   <span className="font-bold text-emerald-300">
-                    R$ {g1Pix.pixPriceFormatted}
+                    R$ {g1Pix.formatted}
                   </span>
                 </div>
 
@@ -295,7 +295,7 @@ export function GameVersusModal({ isOpen, onClose, game1 }: GameVersusModalProps
                       Preço no Pix à vista (-10%)
                     </span>
                     <span className="font-bold text-emerald-300">
-                      R$ {g2Pix.pixPriceFormatted}
+                      R$ {g2Pix.formatted}
                     </span>
                   </div>
 
