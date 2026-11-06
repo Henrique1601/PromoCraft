@@ -6,13 +6,14 @@ import { TopicsShelf } from '@/components/TopicsShelf';
 import { GsapBackground } from '@/components/GsapBackground';
 import { HomeClientControls } from '@/components/HomeClientControls';
 import Link from 'next/link';
-import { Sparkles, Tag, ShieldCheck, DollarSign, Flame, Gamepad2, ShoppingBag } from 'lucide-react';
+import { Sparkles, Tag, ShieldCheck, DollarSign, Flame, Gamepad2, ShoppingBag, Gift } from 'lucide-react';
 
 export default async function HomePage() {
-  const [initialDeals, superDeals, under30Deals, stores, rate] = await Promise.all([
+  const [initialDeals, superDeals, under30Deals, freeDeals, stores, rate] = await Promise.all([
     fetchDeals({ pageSize: 32, sortBy: 'Deal Rating' }),
     fetchDeals({ pageSize: 12, sortBy: 'Savings' }),
     fetchDeals({ pageSize: 12, upperPrice: 6, sortBy: 'Deal Rating' }),
+    fetchDeals({ pageSize: 12, upperPrice: 0, sortBy: 'Savings' }).catch(() => []),
     fetchStores(),
     getUSDtoBRLRate(),
   ]);
@@ -93,6 +94,19 @@ export default async function HomePage() {
           stores={stores}
           rate={rate}
         />
+
+        {/* 3.5. Prateleira Temática: Jogos Grátis & Giveaways */}
+        {freeDeals && freeDeals.length > 0 && (
+          <TopicsShelf
+            title="Jogos 100% Grátis & Giveaways"
+            subtitle="Ativações oficiais gratuitas por tempo limitado para resgatar e jogar sem gastar nada"
+            badge="100% OFF / GRÁTIS"
+            icon={<Gift className="h-5 w-5 text-purple-400" />}
+            deals={freeDeals}
+            stores={stores}
+            rate={rate}
+          />
+        )}
 
         {/* 4. Divisor de Seção com Destaque de Exploração */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-zinc-800/80 pt-6">

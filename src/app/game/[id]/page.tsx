@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { ArrowLeft, ExternalLink, History, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, History, Gamepad2, Zap, CreditCard } from 'lucide-react';
 import { fetchGameDetails, fetchStores } from '@/lib/cheapshark';
 import { WishlistButton } from '@/components/WishlistButton';
 import { PriceHistoryChart } from '@/components/PriceHistoryChart';
@@ -9,8 +9,10 @@ import { DealVerdictCard } from '@/components/DealVerdictCard';
 import { CouponTracker } from '@/components/CouponTracker';
 import { SteamDeckBadge } from '@/components/SteamDeckBadge';
 import { MarketplaceLinksCard } from '@/components/MarketplaceLinksCard';
+import { GsapBackground } from '@/components/GsapBackground';
 import { getDirectStoreUrl } from '@/lib/links';
 import { getUSDtoBRLRate } from '@/lib/currency';
+import { getPixPrice, getInstallmentInfo } from '@/lib/payment';
 
 interface GamePageProps {
   params: Promise<{ id: string }>;
@@ -76,12 +78,52 @@ export default async function GameDetailPage({ params }: GamePageProps) {
   // Ordenar ofertas por menor preço
   const sortedDeals = [...game.deals].sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
   const bestCurrentPrice = sortedDeals[0]?.price || '0';
+  const bestCurrentPriceNum = parseFloat(bestCurrentPrice);
+  const bestCurrentPriceBRL = bestCurrentPriceNum * USD_TO_BRL;
   const retailPrice = parseFloat(sortedDeals[0]?.retailPrice || bestCurrentPrice);
 
+  // Schema.org Structured Data (JSON-LD) para indexação rica no Google
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: game.info.title,
+    image: game.info.thumb,
+    description: `Comparativo de preços em tempo real para o jogo ${game.info.title} em revendedores oficiais autorizados para PC.`,
+    offers: {
+      '@type': 'AggregateOffer',
+      priceCurrency: 'BRL',
+      lowPrice: bestCurrentPriceBRL.toFixed(2),
+      highPrice: (retailPrice * USD_TO_BRL).toFixed(2),
+      offerCount: sortedDeals.length,
+      offers: sortedDeals.map((d) => {
+        const s = storeMap.get(d.storeID);
+        return {
+          '@type': 'Offer',
+          price: (parseFloat(d.price) * USD_TO_BRL).toFixed(2),
+          priceCurrency: 'BRL',
+          seller: {
+            '@type': 'Organization',
+            name: s?.storeName || 'Loja Autorizada',
+          },
+          url: getDirectStoreUrl(d.dealID, d.storeID, game.info.steamAppID, game.info.title),
+        };
+      }),
+    },
+  };
+
   return (
-    <div className="min-h-screen">
+    <div className="relative min-h-screen">
+      {/* Schema.org Rich Snippets */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
+      {/* Fundo Animado com GSAP: Orbes de Luz Atmosféricos e Cor Básica Profunda */}
+      <GsapBackground />
+
       {/* Top Bar */}
-      <header className="sticky top-0 z-50 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-zinc-800/80 bg-zinc-950/85 backdrop-blur-xl shadow-lg">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
           <Link
             href="/"
@@ -91,7 +133,10 @@ export default async function GameDetailPage({ params }: GamePageProps) {
             <span>Voltar para as Ofertas</span>
           </Link>
 
-          <Link href="/wishlist" className="text-xs font-semibold text-emerald-400 hover:underline">
+          <Link
+            href="/wishlist"
+            className="rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:border-emerald-500 hover:text-emerald-300 transition shadow-sm"
+          >
             Minha Wishlist
           </Link>
         </div>
@@ -100,7 +145,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
       {/* Main Details */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-6">
         {/* Game Header */}
-        <div className="flex flex-col gap-6 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-6 backdrop-blur-md md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-6 rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-6 backdrop-blur-md md:flex-row md:items-center md:justify-between shadow-xl">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
             <img
               src={game.info.thumb}
@@ -116,7 +161,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
               </h1>
               {game.info.steamAppID && (
                 <div className="mt-2 flex items-center gap-2 text-xs text-zinc-400">
-                  <Gamepad2 className="h-4 w-4" />
+                  <Gamepad2 className="h-4 w-4 text-emerald-400" />
                   <span>Steam App ID: {game.info.steamAppID}</span>
                 </div>
               )}
@@ -150,7 +195,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
         )}
 
         {/* Historical Low Card */}
-        <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 text-sm text-emerald-300">
+        <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 text-sm text-emerald-300 shadow-sm">
           <History className="h-5 w-5 text-emerald-400 flex-shrink-0" />
           <div>
             <span className="font-semibold">Menor Preço Histórico Registrado: </span>
@@ -181,14 +226,14 @@ export default async function GameDetailPage({ params }: GamePageProps) {
             </span>
           </h2>
 
-          <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
+          <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/40 shadow-xl backdrop-blur-sm">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-semibold text-zinc-400">
+              <thead className="border-b border-zinc-800 bg-zinc-950/80 text-xs font-semibold text-zinc-400">
                 <tr>
                   <th className="px-4 py-3 sm:px-6">Loja</th>
                   <th className="px-4 py-3">Desconto</th>
                   <th className="px-4 py-3">Preço Regular</th>
-                  <th className="px-4 py-3">Preço Atual</th>
+                  <th className="px-4 py-3">Preço Atual & Condições BRL</th>
                   <th className="px-4 py-3 sm:px-6 text-right">Ação</th>
                 </tr>
               </thead>
@@ -200,8 +245,12 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                   const savings = Math.round(parseFloat(deal.savings));
                   const isBestDeal = index === 0;
 
-                  const priceBRL = (priceUSD * USD_TO_BRL).toFixed(2).replace('.', ',');
+                  const rawBRL = priceUSD * USD_TO_BRL;
+                  const priceBRL = rawBRL.toFixed(2).replace('.', ',');
                   const retailBRL = (retailUSD * USD_TO_BRL).toFixed(2).replace('.', ',');
+
+                  const pixInfo = getPixPrice(rawBRL);
+                  const installmentInfo = getInstallmentInfo(rawBRL, 3);
 
                   const storeIconUrl = store?.images.icon
                     ? `https://www.cheapshark.com${store.images.icon}`
@@ -218,7 +267,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                       key={deal.dealID}
                       className={`transition ${
                         isBestDeal
-                          ? 'bg-emerald-950/20 font-medium'
+                          ? 'bg-emerald-950/25 font-medium'
                           : 'hover:bg-zinc-800/40'
                       }`}
                     >
@@ -264,6 +313,20 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                           <span className="text-[10px] text-zinc-500">
                             ${priceUSD.toFixed(2)} USD
                           </span>
+
+                          {/* Simulação Pix & Parcelas BRL */}
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                            <span className="inline-flex items-center gap-0.5 font-bold text-emerald-400">
+                              <Zap className="h-2.5 w-2.5 fill-current" />
+                              R$ {pixInfo.formatted} no Pix
+                            </span>
+                            {installmentInfo && (
+                              <span className="inline-flex items-center gap-0.5 text-zinc-400">
+                                <CreditCard className="h-2.5 w-2.5" />
+                                {installmentInfo.installments}x de R$ {installmentInfo.valuePerInstallment}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
 
@@ -272,7 +335,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                           href={directUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
                             isBestDeal
                               ? 'bg-emerald-500 text-zinc-950 hover:bg-emerald-400 font-bold shadow-md shadow-emerald-950/50'
                               : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'

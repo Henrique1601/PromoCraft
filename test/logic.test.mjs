@@ -141,6 +141,32 @@ function parseSteamWishlistJson(rawText) {
   }
 }
 
+// Funções de métricas da Wishlist 2.0 e Giveaways
+function calculateWishlistMetrics(items, rate = 5.75) {
+  const totalCurrentPriceBRL = items.reduce((acc, i) => acc + (i.currentBestPrice || 0) * rate, 0);
+  const estimatedFullPriceBRL = items.reduce((acc, i) => {
+    const base = i.currentBestPrice ? i.currentBestPrice * 1.85 : 0;
+    return acc + base * rate;
+  }, 0);
+  const totalSavingsBRL = Math.max(0, estimatedFullPriceBRL - totalCurrentPriceBRL);
+  const savingsPercent = estimatedFullPriceBRL > 0 ? Math.round((totalSavingsBRL / estimatedFullPriceBRL) * 100) : 0;
+
+  return {
+    totalCurrentPriceBRL,
+    estimatedFullPriceBRL,
+    totalSavingsBRL,
+    savingsPercent,
+    formattedCurrent: totalCurrentPriceBRL.toFixed(2).replace('.', ','),
+    formattedSavings: totalSavingsBRL.toFixed(2).replace('.', ','),
+  };
+}
+
+function isFreeGiveaway(deal) {
+  const price = parseFloat(deal.salePrice ?? '0');
+  const savings = parseFloat(deal.savings ?? '0');
+  return price === 0 || savings >= 99.9;
+}
+
 // Lógica de veredito do assistente de compra
 function getDealVerdict(currentPrice, cheapestEverPrice, retailPrice) {
   const savingsPercent = retailPrice > 0 ? Math.round(((retailPrice - currentPrice) / retailPrice) * 100) : 0;
@@ -350,6 +376,36 @@ describe('PromoCraft - Testes Unitários de Regra de Negócio & Clean Code', () 
       const parsedJson = parseSteamWishlistJson(validJson);
       assert.strictEqual(parsedJson['105600'].name, 'Terraria');
       assert.strictEqual(parsedJson['730'].name, 'Counter-Strike 2');
+    });
+  });
+
+  describe('Wishlist 2.0 & Inteligência Financeira Gamer', () => {
+    test('deve calcular corretamente a economia agregada da lista de desejos', () => {
+      const wishlistMock = [
+        { gameID: '1', currentBestPrice: 10.0 }, // R$ 57,50
+        { gameID: '2', currentBestPrice: 20.0 }, // R$ 115,00
+      ];
+      const rate = 5.75;
+      const metrics = calculateWishlistMetrics(wishlistMock, rate);
+
+      assert.strictEqual(metrics.totalCurrentPriceBRL, 172.5); // 30 * 5.75
+      assert.strictEqual(metrics.formattedCurrent, '172,50');
+      assert.ok(metrics.totalSavingsBRL > 0);
+      assert.strictEqual(metrics.savingsPercent, 46); // (1.85 - 1) / 1.85 = 45.9% -> 46%
+    });
+
+    test('deve retornar métricas zeradas quando a wishlist estiver vazia', () => {
+      const metrics = calculateWishlistMetrics([]);
+      assert.strictEqual(metrics.totalCurrentPriceBRL, 0);
+      assert.strictEqual(metrics.totalSavingsBRL, 0);
+      assert.strictEqual(metrics.savingsPercent, 0);
+      assert.strictEqual(metrics.formattedCurrent, '0,00');
+    });
+
+    test('deve identificar corretamente ofertas 100% grátis e giveaways', () => {
+      assert.strictEqual(isFreeGiveaway({ salePrice: '0.00', savings: '100' }), true);
+      assert.strictEqual(isFreeGiveaway({ salePrice: '0', savings: '0' }), true);
+      assert.strictEqual(isFreeGiveaway({ salePrice: '19.99', savings: '50' }), false);
     });
   });
 });

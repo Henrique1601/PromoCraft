@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
       targetPrice,
       email,
       discordWebhook,
+      telegramChatId,
     } = body;
 
     if (!gameID || !title) {
@@ -34,12 +35,13 @@ export async function POST(req: NextRequest) {
     const db = getDb();
     const id = crypto.randomUUID();
     const stmt = db.prepare(`
-      INSERT INTO wishlist (id, gameID, title, thumb, steamAppID, cheapestPriceEver, currentBestPrice, targetPrice, email, discordWebhook)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO wishlist (id, gameID, title, thumb, steamAppID, cheapestPriceEver, currentBestPrice, targetPrice, email, discordWebhook, telegramChatId)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(gameID) DO UPDATE SET
         targetPrice = excluded.targetPrice,
         email = excluded.email,
         discordWebhook = excluded.discordWebhook,
+        telegramChatId = excluded.telegramChatId,
         currentBestPrice = excluded.currentBestPrice
     `);
 
@@ -53,7 +55,8 @@ export async function POST(req: NextRequest) {
       currentBestPrice ? parseFloat(currentBestPrice) : null,
       targetPrice ? parseFloat(targetPrice) : null,
       email || '',
-      discordWebhook || ''
+      discordWebhook || '',
+      telegramChatId || ''
     );
 
     return NextResponse.json({ success: true, id });

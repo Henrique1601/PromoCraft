@@ -55,6 +55,7 @@ export function getDb(): Database.Database {
         targetPrice REAL,
         email TEXT,
         discordWebhook TEXT,
+        telegramChatId TEXT,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -70,6 +71,13 @@ export function getDb(): Database.Database {
     // Adiciona coluna discordWebhook se ela não existir
     try {
       _db.exec(`ALTER TABLE wishlist ADD COLUMN discordWebhook TEXT;`);
+    } catch (e) {
+      // Coluna já existe
+    }
+
+    // Adiciona coluna telegramChatId se ela não existir
+    try {
+      _db.exec(`ALTER TABLE wishlist ADD COLUMN telegramChatId TEXT;`);
     } catch (e) {
       // Coluna já existe
     }

@@ -119,3 +119,25 @@ Este documento registra as decisões estratégicas e arquiteturais adotadas no d
   3. **Trava de Scroll & Acessibilidade:** Bloqueio do scroll do `body` enquanto o modal estiver aberto e fechamento universal ao pressionar `Escape`.
   4. **Polish Visual dos Botões da Navbar:** Estilização com gradientes sutis, microinterações tátil no clique (`active:scale-[0.98]`), efeito glow e badges indicadores.
 - **Status:** Aceito e Implementado.
+
+---
+
+### ADR-013: Implementação das Frentes Estratégicas 2 a 5 Gamer (v1.6.0)
+- **Contexto:** Solicitação para implementação das melhorias nas Frentes 2 a 5: Design Gamer com fundo animado em páginas internas, toasts de notificação, Command Palette rápida (`Ctrl+K`), prateleira de jogos 100% grátis, Wishlist 2.0 com painel financeiro, suporte a Telegram e Schema.org JSON-LD para SEO.
+- **Decisão:**
+  1. **Frente 2 (Design Gamer & Toasts):**
+     - Inclusão do `GsapBackground` nas páginas `/game/[id]` e `/wishlist` para atmosfera fluida e cinematográfica contínua.
+     - Criação do `ToastProvider` e hook `useToast` para notificações toast flutuantes e táteis.
+     - Simulação de preço à vista no Pix (10% OFF) e parcelamento sem juros na tabela comparativa de lojas.
+  2. **Frente 3 (Descoberta & Command Palette):**
+     - Criação do `CommandPalette.tsx` com atalho global `Ctrl+K` / `Cmd+K`, debounce de pesquisa e navegação por setas do teclado.
+     - Prateleira de *Jogos 100% Grátis & Giveaways* na Home com ofertas zeradas da Epic e Steam.
+  3. **Frente 4 (Wishlist 2.0 & Gamificação Financeira):**
+     - Dashboard financeiro no topo da `/wishlist` com Valor no Menor Preço Hoje, Preço Cheio de Tabela e Economia Total Acumulada em R$ (-X% OFF).
+     - Compartilhamento visual com resumo formatado de economia.
+     - Suporte a alerta via Telegram Chat ID nos modais e na tabela do SQLite.
+  4. **Frente 5 (Qualidade & SEO Rich Snippets):**
+     - Inserção de dados estruturados Schema.org (`Product`, `AggregateOffer`) via JSON-LD em `/game/[id]`.
+     - Tratamento resiliente de imagens em `DealCard.tsx` com fallback automático via `onError`.
+     - Expansão da suíte para 30 testes unitários automatizados cobrindo métricas financeiras e giveaways.
+- **Status:** Aceito e Implementado.

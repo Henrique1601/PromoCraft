@@ -27,6 +27,7 @@ export function PriceAlertModal({
 
   const [targetPriceBRL, setTargetPriceBRL] = useState(suggestedTargetBRL);
   const [discordWebhook, setDiscordWebhook] = useState('');
+  const [telegramChatId, setTelegramChatId] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
@@ -81,6 +82,7 @@ export function PriceAlertModal({
           currentBestPrice: parseFloat(deal.salePrice),
           targetPrice: priceUSD,
           discordWebhook: discordWebhook.trim() || undefined,
+          telegramChatId: telegramChatId.trim() || undefined,
           email: email.trim() || undefined,
         }),
       });
@@ -256,6 +258,19 @@ export function PriceAlertModal({
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seuemail@exemplo.com"
                 className="w-full rounded-2xl border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-xs text-zinc-200 placeholder-zinc-500 focus:border-emerald-500 focus:bg-zinc-900 focus:outline-none transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
+                Telegram Chat ID ou @Canal (Opcional)
+              </label>
+              <input
+                type="text"
+                value={telegramChatId}
+                onChange={(e) => setTelegramChatId(e.target.value)}
+                placeholder="Ex: @seucanal ou 123456789"
+                className="w-full rounded-2xl border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-xs text-zinc-200 placeholder-zinc-500 focus:border-cyan-500 focus:bg-zinc-900 focus:outline-none transition"
               />
             </div>
 

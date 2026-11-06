@@ -70,6 +70,9 @@ export function DealCard({ deal, store, rate = 5.75, viewMode = 'grid' }: DealCa
                 alt={deal.title}
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.src = 'https://placehold.co/600x400/09090b/10b981?text=PromoCraft';
+                }}
               />
               {isAllTimeLow && (
                 <span className="absolute top-1 left-1 rounded bg-amber-500/90 px-1 py-0.2 text-[9px] font-black text-zinc-950">
@@ -185,6 +188,9 @@ export function DealCard({ deal, store, rate = 5.75, viewMode = 'grid' }: DealCa
               alt={deal.title}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
+              onError={(e) => {
+                e.currentTarget.src = 'https://placehold.co/600x400/09090b/10b981?text=PromoCraft';
+              }}
             />
             {savings > 0 && (
               <div className="absolute right-1.5 top-1.5 rounded-lg bg-emerald-500 px-2 py-0.5 text-[11px] font-black text-zinc-950 shadow-md">
@@ -246,6 +252,9 @@ export function DealCard({ deal, store, rate = 5.75, viewMode = 'grid' }: DealCa
               alt={deal.title}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
+              onError={(e) => {
+                e.currentTarget.src = 'https://placehold.co/600x400/09090b/10b981?text=PromoCraft';
+              }}
             />
 
             <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-transparent to-transparent opacity-80" />
