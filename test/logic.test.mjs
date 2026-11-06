@@ -408,4 +408,111 @@ describe('PromoCraft - Testes Unitários de Regra de Negócio & Clean Code', () 
       assert.strictEqual(isFreeGiveaway({ salePrice: '19.99', savings: '50' }), false);
     });
   });
+
+  describe('Câmbio Global Multi-Moedas (Frente D)', () => {
+    function formatCurrencyPrice(priceUSD, currency = 'BRL', rate = 5.75) {
+      if (currency === 'USD') {
+        const formatted = priceUSD.toFixed(2);
+        return { formatted, symbol: '$', full: `$ ${formatted}` };
+      }
+      if (currency === 'EUR') {
+        const formatted = (priceUSD * 0.92).toFixed(2).replace('.', ',');
+        return { formatted, symbol: '€', full: `€ ${formatted}` };
+      }
+      const formatted = (priceUSD * rate).toFixed(2).replace('.', ',');
+      return { formatted, symbol: 'R$', full: `R$ ${formatted}` };
+    }
+
+    test('deve formatar valores em USD com ponto decimal e símbolo $', () => {
+      const res = formatCurrencyPrice(19.99, 'USD');
+      assert.strictEqual(res.symbol, '$');
+      assert.strictEqual(res.formatted, '19.99');
+      assert.strictEqual(res.full, '$ 19.99');
+    });
+
+    test('deve formatar valores em EUR com taxa aproximada e símbolo €', () => {
+      const res = formatCurrencyPrice(10.0, 'EUR');
+      assert.strictEqual(res.symbol, '€');
+      assert.strictEqual(res.formatted, '9,20');
+      assert.strictEqual(res.full, '€ 9,20');
+    });
+
+    test('deve formatar valores em BRL por padrão com taxa parametrizada', () => {
+      const res = formatCurrencyPrice(10.0, 'BRL', 6.0);
+      assert.strictEqual(res.symbol, 'R$');
+      assert.strictEqual(res.formatted, '60,00');
+      assert.strictEqual(res.full, 'R$ 60,00');
+    });
+  });
+
+  describe('Gamificação da Wishlist & Economia Gamer (Frente B)', () => {
+    function calculateWishlistLevel(items, totalSavingsBRL) {
+      const hasHistoricLow = items.some(
+        (i) => i.currentBestPrice != null && i.cheapestPriceEver != null && i.currentBestPrice <= i.cheapestPriceEver * 1.05
+      );
+      const hasHighSavings = totalSavingsBRL >= 100;
+      const steamCount = items.filter((i) => Boolean(i.steamAppID)).length;
+      const isValveCitizen = steamCount >= 3;
+      const hasFiveItems = items.length >= 5;
+      const hasAlertSet = items.some((i) => Boolean(i.targetPrice && i.targetPrice > 0));
+
+      let unlockedCount = 0;
+      if (hasHistoricLow) unlockedCount++;
+      if (hasHighSavings) unlockedCount++;
+      if (isValveCitizen) unlockedCount++;
+      if (hasFiveItems) unlockedCount++;
+      if (hasAlertSet) unlockedCount++;
+
+      let level = 1;
+      if (unlockedCount >= 4) level = 4;
+      else if (unlockedCount >= 3) level = 3;
+      else if (unlockedCount >= 2) level = 2;
+
+      return { unlockedCount, level };
+    }
+
+    test('deve subir de nível conforme o gamer desbloqueia conquistas financeiras', () => {
+      const itemsMock = [
+        { gameID: '1', currentBestPrice: 10, cheapestPriceEver: 10, steamAppID: '100' },
+        { gameID: '2', currentBestPrice: 20, cheapestPriceEver: 25, steamAppID: '200' },
+        { gameID: '3', currentBestPrice: 15, cheapestPriceEver: 20, steamAppID: '300' },
+        { gameID: '4', currentBestPrice: 5, cheapestPriceEver: 10, targetPrice: 4 },
+        { gameID: '5', currentBestPrice: 8, cheapestPriceEver: 12 },
+      ];
+      // 5 conquistas ativas: historic low, >100 savings, 3 steam, 5 items, alert set
+      const stats = calculateWishlistLevel(itemsMock, 150);
+      assert.strictEqual(stats.unlockedCount, 5);
+      assert.strictEqual(stats.level, 4);
+    });
+
+    test('deve manter nível inicial 1 quando poucas conquistas forem atendidas', () => {
+      const stats = calculateWishlistLevel([{ gameID: '1', currentBestPrice: 50 }], 20);
+      assert.strictEqual(stats.unlockedCount, 0);
+      assert.strictEqual(stats.level, 1);
+    });
+  });
+
+  describe('Comparador Lado a Lado / Modo Versus (Frente C)', () => {
+    function calculateVersusDuel(game1PriceUSD, game2PriceUSD, rate = 5.75) {
+      const g1BRL = game1PriceUSD * rate;
+      const g2BRL = game2PriceUSD * rate;
+      const diffBRL = Math.abs(g1BRL - g2BRL);
+      const winner = g1BRL < g2BRL ? 'game1' : g2BRL < g1BRL ? 'game2' : 'tie';
+      return { g1BRL, g2BRL, diffBRL, winner };
+    }
+
+    test('deve calcular corretamente a vantagem de preço no modo versus', () => {
+      const duel = calculateVersusDuel(10.0, 15.0, 5.0);
+      assert.strictEqual(duel.winner, 'game1');
+      assert.strictEqual(duel.g1BRL, 50.0);
+      assert.strictEqual(duel.g2BRL, 75.0);
+      assert.strictEqual(duel.diffBRL, 25.0);
+    });
+
+    test('deve detectar empate de preços no duelo', () => {
+      const duel = calculateVersusDuel(20.0, 20.0, 5.0);
+      assert.strictEqual(duel.winner, 'tie');
+      assert.strictEqual(duel.diffBRL, 0.0);
+    });
+  });
 });

@@ -1,3 +1,18 @@
+export type CurrencyCode = 'BRL' | 'USD' | 'EUR';
+
+export interface CurrencyConfig {
+  code: CurrencyCode;
+  symbol: string;
+  name: string;
+  flag: string;
+}
+
+export const SUPPORTED_CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
+  BRL: { code: 'BRL', symbol: 'R$', name: 'Real Brasileiro', flag: '🇧🇷' },
+  USD: { code: 'USD', symbol: '$', name: 'Dólar Americano', flag: '🇺🇸' },
+  EUR: { code: 'EUR', symbol: '€', name: 'Euro Europeu', flag: '🇪🇺' },
+};
+
 let cachedRate: number | null = null;
 let lastFetched = 0;
 
@@ -35,4 +50,43 @@ export async function getUSDtoBRLRate(): Promise<number> {
 export function formatBRL(priceUSD: number, rate: number = 5.75): string {
   const brl = priceUSD * rate;
   return brl.toFixed(2).replace('.', ',');
+}
+
+/**
+ * Utilitário multi-moeda universal (BRL, USD, EUR)
+ */
+export function formatCurrencyPrice(
+  priceUSD: number,
+  currency: CurrencyCode = 'BRL',
+  rateUSDToBRL: number = 5.75
+): { formatted: string; symbol: string; full: string } {
+  const cfg = SUPPORTED_CURRENCIES[currency] || SUPPORTED_CURRENCIES.BRL;
+
+  if (currency === 'USD') {
+    const formatted = priceUSD.toFixed(2);
+    return {
+      formatted,
+      symbol: cfg.symbol,
+      full: `${cfg.symbol} ${formatted}`,
+    };
+  }
+
+  if (currency === 'EUR') {
+    // Taxa de conversão aproximada USD -> EUR (~0.92)
+    const priceEUR = priceUSD * 0.92;
+    const formatted = priceEUR.toFixed(2).replace('.', ',');
+    return {
+      formatted,
+      symbol: cfg.symbol,
+      full: `${cfg.symbol} ${formatted}`,
+    };
+  }
+
+  // BRL Padrão
+  const formatted = (priceUSD * rateUSDToBRL).toFixed(2).replace('.', ',');
+  return {
+    formatted,
+    symbol: cfg.symbol,
+    full: `${cfg.symbol} ${formatted}`,
+  };
 }

@@ -16,6 +16,7 @@ import {
   X,
   Check,
   Tag,
+  Cpu,
 } from 'lucide-react';
 import { Store } from '@/types/deals';
 
@@ -29,7 +30,7 @@ export interface FilterState {
   pageSize: number;
   minRating: string;
   onlyAAA: boolean;
-  topic?: 'all' | 'super_savings' | 'historic_low' | 'under_30' | 'aaa' | 'free';
+  topic?: 'all' | 'super_savings' | 'historic_low' | 'under_30' | 'aaa' | 'free' | 'steam_deck';
 }
 
 interface SidebarFiltersProps {
@@ -92,6 +93,14 @@ export function SidebarFilters({
           page: 0,
         });
         break;
+      case 'steam_deck':
+        onFilterChange({
+          topic: 'steam_deck',
+          sortBy: 'Deal Rating',
+          minRating: '75',
+          page: 0,
+        });
+        break;
       case 'free':
         onFilterChange({
           topic: 'free',
@@ -151,6 +160,7 @@ export function SidebarFilters({
             { id: 'historic_low', label: '👑 Menor Preço Histórico', icon: Award },
             { id: 'under_30', label: '💸 Até R$ 30 (Baratos)', icon: Wallet },
             { id: 'aaa', label: '🎮 Jogos AAA & Blockbusters', icon: Gamepad2 },
+            { id: 'steam_deck', label: '🔋 Steam Deck & Portáteis', icon: Cpu },
             { id: 'free', label: '🎁 100% Grátis', icon: Gift },
           ].map((item) => {
             const Icon = item.icon;

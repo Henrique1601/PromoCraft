@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { GsapBackground } from '@/components/GsapBackground';
 import { useToast } from '@/components/ToastProvider';
+import { WishlistAchievements } from '@/components/WishlistAchievements';
 
 interface WishlistItem {
   id: string;
@@ -372,6 +373,11 @@ export default function WishlistPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Gamificação & Conquistas de Economia Gamer (Frente B) */}
+        {items.length > 0 && (
+          <WishlistAchievements items={items} totalSavingsBRL={totalSavingsBRL} />
         )}
 
         {/* Modal de Importação Steam */}

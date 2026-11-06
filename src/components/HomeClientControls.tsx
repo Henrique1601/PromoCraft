@@ -1,16 +1,19 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bot, Gamepad2, Sparkles, Search } from 'lucide-react';
+import { Bot, Gamepad2, Sparkles, Search, Gift } from 'lucide-react';
 import { SteamWishlistModal } from '@/components/SteamWishlistModal';
 import { AiConciergeModal } from '@/components/AiConciergeModal';
 import { CommandPalette } from '@/components/CommandPalette';
+import { GiveawaysModal } from '@/components/GiveawaysModal';
+import { CurrencySelector } from '@/components/CurrencySelector';
 import { BottomNav } from '@/components/BottomNav';
 
 export function HomeClientControls() {
   const [isSteamModalOpen, setIsSteamModalOpen] = useState(false);
   const [isAiConciergeOpen, setIsAiConciergeOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isGiveawaysOpen, setIsGiveawaysOpen] = useState(false);
 
   // Listener global para atalho de teclado Ctrl+K ou Cmd+K
   useEffect(() => {
@@ -63,6 +66,23 @@ export function HomeClientControls() {
           <Gamepad2 className="h-3.5 w-3.5 text-indigo-400 transition group-hover:scale-110" />
           <span className="hidden sm:inline">Sync Steam</span>
         </button>
+
+        {/* Botão Giveaways ao Vivo */}
+        <button
+          onClick={() => setIsGiveawaysOpen(true)}
+          className="group relative flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 px-3 py-1.5 text-xs font-bold text-amber-300 shadow-sm shadow-amber-950/40 transition hover:border-amber-400 hover:bg-amber-500/25 hover:text-white hover:shadow-amber-500/20 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+          title="Ver jogos 100% grátis e giveaways ao vivo"
+        >
+          <Gift className="h-3.5 w-3.5 text-amber-400 transition group-hover:scale-110" />
+          <span className="hidden sm:inline">Giveaways</span>
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+        </button>
+
+        {/* Câmbio Global Multi-Moedas */}
+        <CurrencySelector />
       </div>
 
       {/* Modais Globais Interativos com Portal */}
@@ -74,6 +94,11 @@ export function HomeClientControls() {
       <AiConciergeModal
         isOpen={isAiConciergeOpen}
         onClose={() => setIsAiConciergeOpen(false)}
+      />
+
+      <GiveawaysModal
+        isOpen={isGiveawaysOpen}
+        onClose={() => setIsGiveawaysOpen(false)}
       />
 
       <CommandPalette

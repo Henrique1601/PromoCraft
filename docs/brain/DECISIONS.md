@@ -141,3 +141,34 @@ Este documento registra as decisões estratégicas e arquiteturais adotadas no d
      - Tratamento resiliente de imagens em `DealCard.tsx` com fallback automático via `onError`.
      - Expansão da suíte para 30 testes unitários automatizados cobrindo métricas financeiras e giveaways.
 - **Status:** Aceito e Implementado.
+
+
+---
+
+### ADR-014: Suíte Gamer Completa: Requisitos de Sistema Hardware, Gamificação da Wishlist, Modo Versus, Câmbio Multi-Moedas e Central de Giveaways ao Vivo (v1.7.0)
+- **Contexto:** Solicitação para implementação de todas as 5 novas frentes de inovação gamer (A até E), transformando o PromoCraft em uma plataforma de inteligência de compras e hardware completa para PC Gamers.
+- **Decisão:**
+  1. **Frente A (Hardware & Requisitos de Sistema - "Roda no Meu PC?"):**
+     - Endpoint `/api/steam/specs` que consulta a Steam Store API oficial (`appdetails`), realizando cache de 24 horas por jogo e normalizando especificações mínimas e recomendadas.
+     - Componente `SystemRequirementsCard.tsx` integrado na página `/game/[id]` com alternância entre abas de especificações Mínimas e Recomendadas em design escuro refinado.
+     - Novo tópico rápido de filtragem `steam_deck` ("🔋 Steam Deck & Portáteis") na `SidebarFilters.tsx`.
+  2. **Frente B (Gamificação & Conquistas de Economia Gamer):**
+     - Componente `WishlistAchievements.tsx` integrado na `/wishlist`.
+     - Sistema de 6 badges dinâmicos baseados no comportamento financeiro do gamer: *Sniper de Recordes*, *Mão de Vaca Lendário*, *Cidadão da Valve*, *Mestre do Orçamento*, *Guardião de Preço* e *Caçador de Freebies*.
+     - Sistema de Nível Gamer (Nível 1 a 5) com pontuação XP, cálculo de progresso percentual e títulos dinâmicos.
+  3. **Frente C (Comparador Lado a Lado - Modo Versus):**
+     - Modal interativo `GameVersusModal.tsx` acionado pelo botão `GameVersusButton.tsx` no cabeçalho do jogo.
+     - Busca em tempo real pelo segundo jogo via `/api/deals?title=...` com sugestões pré-configuradas.
+     - Duelo direto exibindo Menor Preço Atual, Preço no Pix (-10%), Desconto %, Recorde Histórico e veredito inteligente de quem vence a disputa de preço.
+     - Implementação com `createPortal(content, document.body)` para evitar bloqueio por containing block e isolamento de contexto.
+  4. **Frente D (Câmbio Global Multi-Moedas Instantâneo):**
+     - Expansão do módulo `src/lib/currency.ts` com tipagem `CurrencyCode` (`BRL`, `USD`, `EUR`), dicionário de moedas e formatador `formatCurrencyPrice`.
+     - Componente `CurrencySelector.tsx` com bandeiras (`🇧🇷 BRL`, `🇺🇸 USD`, `🇪🇺 EUR`), dropdown acessível, persistência no `localStorage` e disparo de evento `currency-changed`.
+  5. **Frente E (Central de Giveaways ao Vivo):**
+     - Rota `/api/giveaways/route.ts` que integra a GamerPower API para jogos de PC com cache TTL de 10 minutos e fallback automático.
+     - Modal `GiveawaysModal.tsx` com teletransporte React Portal, campo de busca em tempo real, badges de plataformas autorizadas (Epic Games, Steam, GOG) e links diretos para resgate oficial.
+     - Botão com pulso esmeralda ao vivo "🎁 Giveaways" e seletor de moedas na barra superior (`HomeClientControls.tsx`).
+  6. **Governança & Testes:**
+     - Incremento semântico de versão no `package.json` para `1.7.0`.
+     - Expansão da suíte de testes unitários para 37 testes automatizados (`node --test test/**/*.test.mjs`), todos passando com 100% de sucesso.
+- **Status:** Aceito e Implementado.

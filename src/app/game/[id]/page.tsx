@@ -4,10 +4,12 @@ import type { Metadata } from 'next';
 import { ArrowLeft, ExternalLink, History, Gamepad2, Zap, CreditCard } from 'lucide-react';
 import { fetchGameDetails, fetchStores } from '@/lib/cheapshark';
 import { WishlistButton } from '@/components/WishlistButton';
+import { GameVersusButton } from '@/components/GameVersusButton';
 import { PriceHistoryChart } from '@/components/PriceHistoryChart';
 import { DealVerdictCard } from '@/components/DealVerdictCard';
 import { CouponTracker } from '@/components/CouponTracker';
 import { SteamDeckBadge } from '@/components/SteamDeckBadge';
+import { SystemRequirementsCard } from '@/components/SystemRequirementsCard';
 import { MarketplaceLinksCard } from '@/components/MarketplaceLinksCard';
 import { GsapBackground } from '@/components/GsapBackground';
 import { getDirectStoreUrl } from '@/lib/links';
@@ -168,7 +170,16 @@ export default async function GameDetailPage({ params }: GamePageProps) {
             </div>
           </div>
 
-          <div className="flex flex-col items-start md:items-end gap-3">
+          <div className="flex flex-wrap items-center md:items-end gap-3">
+            <GameVersusButton
+              title={game.info.title}
+              thumb={game.info.thumb}
+              currentPrice={parseFloat(bestCurrentPrice)}
+              cheapestEverPrice={cheapestEverUSD}
+              retailPrice={retailPrice}
+              steamAppID={game.info.steamAppID}
+              rate={rate}
+            />
             <WishlistButton
               gameID={id}
               title={game.info.title}
@@ -192,6 +203,11 @@ export default async function GameDetailPage({ params }: GamePageProps) {
         {/* Steam Deck & Handheld Compatibility */}
         {game.info.steamAppID && (
           <SteamDeckBadge steamAppID={game.info.steamAppID} title={game.info.title} />
+        )}
+
+        {/* Requisitos de Sistema Hardware ("Roda no Meu PC?") */}
+        {game.info.steamAppID && (
+          <SystemRequirementsCard steamAppID={game.info.steamAppID} title={game.info.title} />
         )}
 
         {/* Historical Low Card */}
