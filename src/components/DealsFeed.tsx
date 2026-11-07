@@ -456,7 +456,6 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75, hideSidebar }: De
           </button>
         </div>
       </div>
-    </div>
   );
 
   if (shouldHideInternalSidebar) {
