@@ -108,32 +108,3 @@ export default async function HomePage() {
     </div>
   );
 }
-
-      {/* Footer Gamer Elegante */}
-      <footer className="mt-20 border-t border-zinc-900 bg-zinc-950/90 px-4 py-12 text-center text-xs text-zinc-500 backdrop-blur-md">
-        <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <img src="/logo-mark.png" alt="PromoCraft Logo" className="h-6 w-6 rounded-lg object-cover" />
-            <span className="font-extrabold text-zinc-300 tracking-tight">PromoCraft © 2026</span>
-          </div>
-
-          <p className="text-zinc-500 text-[11px] max-w-md">
-            Agregação de ofertas em tempo real através de parceiros oficiais autorizados. Preços e disponibilidade sujeitos a alteração pelas lojas.
-          </p>
-
-          <div className="flex items-center gap-5 text-zinc-400 font-semibold">
-            <Link href="/wishlist" className="hover:text-emerald-400 transition">Wishlist</Link>
-            <a
-              href="https://github.com/Henrique1601/PromoCraft"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-emerald-400 transition"
-            >
-              GitHub
-            </a>
-          </div>
-        </div>
-      </footer>
-    </div>
-  );
-}
