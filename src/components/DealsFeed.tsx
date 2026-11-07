@@ -20,11 +20,13 @@ import { Deal, Store } from '@/types/deals';
 import { DealCard } from '@/components/DealCard';
 import { DealSkeleton } from '@/components/DealSkeleton';
 import { SidebarFilters, FilterState } from '@/components/SidebarFilters';
+import { useCatalogFilters } from '@/context/CatalogFilterContext';
 
 interface DealsFeedProps {
   initialDeals: Deal[];
   stores: Store[];
   rate?: number;
+  hideSidebar?: boolean;
 }
 
 const INITIAL_FILTERS: FilterState = {
@@ -40,9 +42,10 @@ const INITIAL_FILTERS: FilterState = {
   topic: 'all',
 };
 
-export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps) {
+export function DealsFeed({ initialDeals, stores, rate = 5.75, hideSidebar }: DealsFeedProps) {
+  const catalogContext = useCatalogFilters();
   const [deals, setDeals] = useState<Deal[]>(initialDeals);
-  const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
+  const [internalFilters, setInternalFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [suggestions, setSuggestions] = useState<Deal[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'compact' | 'list'>('grid');
@@ -51,6 +54,9 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
+  const isInitialMount = useRef(true);
+
+  const filters = catalogContext?.filters ?? internalFilters;
 
   const storeMap = new Map<string, Store>();
   stores.forEach((s) => storeMap.set(s.storeID, s));
@@ -60,15 +66,52 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
   );
 
   // Contagem de filtros ativos
-  const activeFiltersCount = [
-    Boolean(filters.search.trim()),
-    Boolean(filters.store),
-    Boolean(filters.underPrice),
-    Boolean(filters.onlyFree),
-    Boolean(filters.minRating),
-    Boolean(filters.onlyAAA),
-    Boolean(filters.topic && filters.topic !== 'all'),
-  ].filter(Boolean).length;
+  const activeFiltersCount =
+    catalogContext?.activeFiltersCount ??
+    [
+      Boolean(filters.search.trim()),
+      Boolean(filters.store),
+      Boolean(filters.underPrice),
+      Boolean(filters.onlyFree),
+      Boolean(filters.minRating),
+      Boolean(filters.onlyAAA),
+      Boolean(filters.topic && filters.topic !== 'all'),
+    ].filter(Boolean).length;
+
+  // Atualização reativa de ofertas quando filters muda (acionado pela GlobalSidebar ou busca)
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    startTransition(async () => {
+      const params = new URLSearchParams();
+      if (filters.search.trim()) params.set('title', filters.search.trim());
+      if (filters.store) params.set('storeID', filters.store);
+      if (filters.sortBy) params.set('sortBy', filters.sortBy);
+      if (filters.minRating) params.set('steamRating', filters.minRating);
+      if (filters.onlyAAA) params.set('AAA', '1');
+      params.set('pageNumber', filters.page.toString());
+      params.set('pageSize', filters.pageSize.toString());
+
+      if (filters.onlyFree) {
+        params.set('upperPrice', '0');
+      } else if (filters.underPrice) {
+        params.set('upperPrice', filters.underPrice);
+      }
+
+      try {
+        const res = await fetch(`/api/deals?${params.toString()}`);
+        if (res.ok) {
+          const data: Deal[] = await res.json();
+          setDeals(data);
+        }
+      } catch (err) {
+        console.error('Falha ao filtrar promoções:', err);
+      }
+    });
+  }, [filters]);
 
   // Autocomplete com debounce
   useEffect(() => {
@@ -122,68 +165,38 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
 
   // Dispatcher centralizado de filtros com transição limpa
   function applyFilters(updates: Partial<FilterState>) {
-    const next: FilterState = { ...filters, ...updates };
-    setFilters(next);
     setShowSuggestions(false);
-
-    startTransition(async () => {
-      const params = new URLSearchParams();
-      if (next.search.trim()) params.set('title', next.search.trim());
-      if (next.store) params.set('storeID', next.store);
-      if (next.sortBy) params.set('sortBy', next.sortBy);
-      if (next.minRating) params.set('steamRating', next.minRating);
-      if (next.onlyAAA) params.set('AAA', '1');
-      params.set('pageNumber', next.page.toString());
-      params.set('pageSize', next.pageSize.toString());
-
-      if (next.onlyFree) {
-        params.set('upperPrice', '0');
-      } else if (next.underPrice) {
-        params.set('upperPrice', next.underPrice);
-      }
-
-      try {
-        const res = await fetch(`/api/deals?${params.toString()}`);
-        if (res.ok) {
-          const data: Deal[] = await res.json();
-          setDeals(data);
-        }
-      } catch (err) {
-        console.error('Falha ao filtrar promoções:', err);
-      }
-    });
+    if (catalogContext) {
+      catalogContext.applyFilters(updates);
+    } else {
+      setInternalFilters((prev) => ({ ...prev, ...updates }));
+    }
   }
 
   function changePage(newPage: number) {
     if (newPage < 0) return;
     applyFilters({ page: newPage });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const target = document.getElementById('catalogo') || document.body;
+    target.scrollIntoView({ behavior: 'smooth' });
   }
 
   function resetAllFilters() {
-    applyFilters({ ...INITIAL_FILTERS });
+    setShowSuggestions(false);
+    if (catalogContext) {
+      catalogContext.resetAllFilters();
+    } else {
+      setInternalFilters(INITIAL_FILTERS);
+    }
   }
 
-  return (
-    <div className="flex flex-col lg:flex-row items-start gap-8">
-      {/* 1. Sidebar de Filtros e Categorias */}
-      <SidebarFilters
-        filters={filters}
-        stores={stores}
-        popularStores={popularStores}
-        rate={rate}
-        onFilterChange={applyFilters}
-        onReset={resetAllFilters}
-        activeCount={activeFiltersCount}
-        isOpenMobile={isMobileSidebarOpen}
-        onCloseMobile={() => setIsMobileSidebarOpen(false)}
-      />
+  const shouldHideInternalSidebar = hideSidebar || Boolean(catalogContext);
 
-      {/* 2. Área Principal de Conteúdo & Grid */}
-      <div className="flex-1 min-w-0 w-full space-y-5">
-        {/* Barra Superior: Busca, Botão Mobile de Filtros e Controles de Visualização */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3.5 rounded-2xl border border-zinc-800/80 bg-zinc-950/70 p-3.5 backdrop-blur-xl shadow-lg">
-          {/* Botão de Filtros no Mobile */}
+  const mainFeedContent = (
+    <div className="w-full space-y-5">
+      {/* Barra Superior: Busca, Botão Mobile de Filtros e Controles de Visualização */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3.5 rounded-2xl border border-zinc-800/80 bg-zinc-950/70 p-3.5 backdrop-blur-xl shadow-lg">
+        {/* Botão de Filtros no Mobile (apenas quando usando a sidebar interna) */}
+        {!shouldHideInternalSidebar && (
           <button
             onClick={() => setIsMobileSidebarOpen(true)}
             className="flex lg:hidden items-center justify-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/90 px-4 py-2 text-xs font-bold text-zinc-200 transition hover:border-emerald-500 hover:text-emerald-400"
@@ -196,6 +209,7 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
               </span>
             )}
           </button>
+        )}
 
           {/* Campo de Busca com Autocomplete */}
           <div ref={searchContainerRef} className="relative flex-1">
@@ -441,6 +455,29 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75 }: DealsFeedProps)
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
+      </div>
+    </div>
+  );
+
+  if (shouldHideInternalSidebar) {
+    return mainFeedContent;
+  }
+
+  return (
+    <div className="flex flex-col lg:flex-row items-start gap-8">
+      <SidebarFilters
+        filters={filters}
+        stores={stores}
+        popularStores={popularStores}
+        rate={rate}
+        onFilterChange={applyFilters}
+        onReset={resetAllFilters}
+        activeCount={activeFiltersCount}
+        isOpenMobile={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+      />
+      <div className="flex-1 min-w-0 w-full">
+        {mainFeedContent}
       </div>
     </div>
   );

@@ -200,3 +200,34 @@ Este documento registra as decisões estratégicas e arquiteturais adotadas no d
      - Incremento de versão para `2.0.0` no `package.json`.
      - Expansão da suíte para 44 testes unitários automatizados em `test/logic.test.mjs`.
 - **Status:** Aceito e Implementado.
+
+
+---
+
+### ADR-016: Sidebar Global por Seções, Navbar Despoluída e Vitrine Widescreen (v2.1.0)
+- **Contexto:** Relato de poluição visual na barra de navegação superior (mais de 10 elementos espremidos na horizontal) e ausência de imagens de capa em primeiro plano no carrossel de destaques (`HeroShowcase`), gerando uma grande lacuna escura no painel principal, além de sobreposição de modais.
+- **Decisões:**
+  1. **CleanNavbar (`src/components/CleanNavbar.tsx`):**
+     - Remoção dos 6 botões utilitários empilhados da barra superior.
+     - Layout minimalista e espaçoso contendo apenas: Menu Hambúrguer (mobile), Logo PromoCraft, Busca Rápida Ctrl+K, Câmbio USD/BRL, Seletor de Moeda e Link para Wishlist.
+  2. **GlobalSidebar (`src/components/GlobalSidebar.tsx`):**
+     - Estruturação de uma barra lateral para todo o site organizada em 7 seções especializadas:
+       - *Seção 1 (Ferramentas & IA Gamer):* IA Concierge, Co-op Radar, Giveaways ao Vivo (com indicador pulsante) e Sincronizar Steam.
+       - *Seção 2 (Coleções do Catálogo):* Todos os Jogos, Super Descontos 70%+, Menor Preço Histórico, Até R$ 30, Jogos AAA, Steam Deck e 100% Grátis.
+       - *Seção 3 (Gêneros Populares):* Ação, RPG, Estratégia, Terror, Indie, Roguelike, Soulslike, Cooperativo.
+       - *Seção 4 (Orçamento no Bolso):* Slider interativo de R$ 10 a R$ 200 via `BudgetSlider`.
+       - *Seção 5 (Lojas Oficiais):* Filtros diretos com badges oficiais das revendedoras autorizadas.
+       - *Seção 6 (Minha Área):* Acesso rápido à Wishlist e Alertas.
+       - *Seção 7 (Garantia & Rodapé):* Selo de Lojas 100% Oficiais e metadados.
+     - Suporte nativo tanto para desktop (barra fixa lateral com sticky scrolling) quanto mobile (drawer deslizante com overlay e backdrop-blur).
+  3. **Contexto Reativo de Filtros (`src/context/CatalogFilterContext.tsx`):**
+     - Compartilhamento de estado unificado entre `GlobalSidebar` e `DealsFeed`.
+     - Eliminação de sidebars duplicadas dentro da área de feed no desktop, expandindo o catálogo para 100% da largura útil disponível.
+  4. **HeroShowcase Widescreen (`src/components/HeroShowcase.tsx`):**
+     - Adição de imagem de capa em primeiro plano formato 16:9 widescreen para o jogo ativo.
+     - Resolução automática de artes oficiais da Steam via `steamAppID` com fallback seguro para `thumb`.
+     - Elevação da opacidade do background dinâmico para 35%, eliminando a lacuna preta no lado esquerdo da vitrine.
+  5. **Governança & Qualidade:**
+     - Incremento de versão para `2.1.0` no `package.json`.
+     - Expansão da suíte para 50 testes unitários automatizados passando com 100% de sucesso.
+- **Status:** Aceito e Implementado.

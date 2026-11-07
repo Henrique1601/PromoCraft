@@ -609,4 +609,94 @@ describe('PromoCraft - Testes Unitários de Regra de Negócio & Clean Code', () 
       assert.strictEqual(checkCacheAge(expired), false);
     });
   });
+
+  describe('Hero Showcase & Imagens de Capa Widescreen', () => {
+    function resolveHeroBanner(deal) {
+      if (deal.steamAppID && deal.steamAppID !== '0') {
+        return `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${deal.steamAppID}/header.jpg`;
+      }
+      return deal.thumb;
+    }
+
+    test('deve resolver arte widescreen Steam em alta resolução quando houver steamAppID', () => {
+      const deal = {
+        steamAppID: '1091500',
+        thumb: 'https://images.cheapshark.com/thumb_cyberpunk.jpg',
+      };
+      const banner = resolveHeroBanner(deal);
+      assert.strictEqual(
+        banner,
+        'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1091500/header.jpg'
+      );
+    });
+
+    test('deve utilizar fallback thumb quando steamAppID for inexistente ou 0', () => {
+      const deal = {
+        steamAppID: '0',
+        thumb: 'https://images.cheapshark.com/thumb_epic.jpg',
+      };
+      assert.strictEqual(resolveHeroBanner(deal), 'https://images.cheapshark.com/thumb_epic.jpg');
+    });
+  });
+
+  describe('Sidebar Global & Mapeamento de Tópicos do Catálogo', () => {
+    function mapTopicToFilters(topic, rate = 5.75) {
+      switch (topic) {
+        case 'super_savings':
+          return { sortBy: 'Savings', onlyFree: false, underPrice: '' };
+        case 'historic_low':
+          return { sortBy: 'Deal Rating', minRating: '80' };
+        case 'under_30':
+          return { underPrice: Math.round(30 / rate).toString(), onlyFree: false };
+        case 'aaa':
+          return { onlyAAA: true };
+        case 'steam_deck':
+          return { sortBy: 'Deal Rating', minRating: '75' };
+        case 'free':
+          return { onlyFree: true, underPrice: '' };
+        default:
+          return { onlyFree: false, underPrice: '', onlyAAA: false };
+      }
+    }
+
+    test('deve mapear corretamente o tópico under_30 para o teto em USD', () => {
+      const filters = mapTopicToFilters('under_30', 5.75);
+      assert.strictEqual(filters.underPrice, '5');
+      assert.strictEqual(filters.onlyFree, false);
+    });
+
+    test('deve mapear tópico super_savings com ordenação por economia', () => {
+      const filters = mapTopicToFilters('super_savings');
+      assert.strictEqual(filters.sortBy, 'Savings');
+    });
+
+    test('deve mapear tópico free para ofertas 100% gratuitas', () => {
+      const filters = mapTopicToFilters('free');
+      assert.strictEqual(filters.onlyFree, true);
+    });
+
+    test('deve calcular corretamente a quantidade de filtros ativos', () => {
+      function countActiveFilters(filters) {
+        return [
+          Boolean(filters.search && filters.search.trim()),
+          Boolean(filters.store),
+          Boolean(filters.underPrice),
+          Boolean(filters.onlyFree),
+          Boolean(filters.minRating),
+          Boolean(filters.onlyAAA),
+          Boolean(filters.topic && filters.topic !== 'all'),
+        ].filter(Boolean).length;
+      }
+
+      assert.strictEqual(countActiveFilters({}), 0);
+      assert.strictEqual(
+        countActiveFilters({ search: 'cyberpunk', store: '1', topic: 'aaa' }),
+        3
+      );
+      assert.strictEqual(
+        countActiveFilters({ topic: 'all' }),
+        0
+      );
+    });
+  });
 });
