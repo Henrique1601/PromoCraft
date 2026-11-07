@@ -173,6 +173,14 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75, hideSidebar }: De
     }
   }
 
+  function handleSearchInput(search: string) {
+    if (catalogContext) {
+      catalogContext.applyFilters({ search });
+    } else {
+      setInternalFilters((prev: FilterState) => ({ ...prev, search }));
+    }
+  }
+
   function changePage(newPage: number) {
     if (newPage < 0) return;
     applyFilters({ page: newPage });
@@ -218,7 +226,7 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75, hideSidebar }: De
               type="text"
               placeholder="Buscar jogos (ex: Resident Evil, Cyberpunk, Baldur's Gate)..."
               value={filters.search}
-              onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+              onChange={(e) => handleSearchInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   applyFilters({ search: filters.search, page: 0 });
