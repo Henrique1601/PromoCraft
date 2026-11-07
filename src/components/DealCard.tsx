@@ -2,12 +2,16 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Flame, ExternalLink, ThumbsUp, Scale, Sparkles, Gamepad2, Bell, QrCode } from 'lucide-react';
+import { Flame, ExternalLink, ThumbsUp, Scale, Sparkles, Gamepad2, Bell, QrCode, Share2 } from 'lucide-react';
 import { Deal, Store } from '@/types/deals';
 import { getDirectStoreUrl } from '@/lib/links';
 import { formatBRL } from '@/lib/currency';
 import { getPixPrice, getInstallmentInfo } from '@/lib/payment';
 import { PriceAlertModal } from '@/components/PriceAlertModal';
+import { CostPerHourBadge } from '@/components/CostPerHourBadge';
+import { EditionBadge } from '@/components/EditionBadge';
+import { CommunityVibeTracker } from '@/components/CommunityVibeTracker';
+import { ShareableDealModal } from '@/components/ShareableDealModal';
 
 interface DealCardProps {
   deal: Deal;
@@ -18,6 +22,7 @@ interface DealCardProps {
 
 export function DealCard({ deal, store, rate = 5.75, viewMode = 'grid' }: DealCardProps) {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   const savings = Math.round(parseFloat(deal.savings));
   const salePriceUSD = parseFloat(deal.salePrice);
@@ -55,6 +60,16 @@ export function DealCard({ deal, store, rate = 5.75, viewMode = 'grid' }: DealCa
         rate={rate}
         isOpen={isAlertOpen}
         onClose={() => setIsAlertOpen(false)}
+      />
+
+      <ShareableDealModal
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        title={deal.title}
+        thumb={deal.thumb}
+        priceBRL={salePriceBRL}
+        priceUSD={salePriceUSD.toFixed(2)}
+        savings={savings}
       />
 
       {/* MODO LISTA / TABELA */}
@@ -309,6 +324,9 @@ export function DealCard({ deal, store, rate = 5.75, viewMode = 'grid' }: DealCa
           {/* Título & Detalhes */}
           <div className="mt-4 flex flex-1 flex-col justify-between">
             <div>
+              <div className="flex items-center gap-2 mb-1">
+                <EditionBadge title={deal.title} />
+              </div>
               <Link href={`/game/${deal.gameID}`} className="block">
                 <h3
                   className="line-clamp-2 text-sm font-extrabold text-zinc-100 group-hover:text-emerald-400 transition leading-snug"
@@ -318,24 +336,28 @@ export function DealCard({ deal, store, rate = 5.75, viewMode = 'grid' }: DealCa
                 </h3>
               </Link>
 
-              <div className="mt-2.5 flex items-center gap-3 text-xs text-zinc-400">
-                {deal.steamRatingPercent && parseInt(deal.steamRatingPercent) > 0 && (
-                  <div
-                    className="flex items-center gap-1 text-emerald-400 font-semibold"
-                    title={`Avaliação Steam: ${deal.steamRatingText || ''}`}
-                  >
-                    <ThumbsUp className="h-3 w-3" />
-                    <span>{deal.steamRatingPercent}%</span>
-                  </div>
-                )}
-                {deal.dealRating && (
-                  <div
-                    className="rounded-md bg-zinc-900 border border-zinc-800 px-2 py-0.5 text-[10px] font-bold text-zinc-300"
-                    title="Score de Negócio"
-                  >
-                    Score: <span className="text-emerald-400">{deal.dealRating}/10</span>
-                  </div>
-                )}
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400">
+                <div className="flex items-center gap-2.5">
+                  {deal.steamRatingPercent && parseInt(deal.steamRatingPercent) > 0 && (
+                    <div
+                      className="flex items-center gap-1 text-emerald-400 font-semibold"
+                      title={`Avaliação Steam: ${deal.steamRatingText || ''}`}
+                    >
+                      <ThumbsUp className="h-3 w-3" />
+                      <span>{deal.steamRatingPercent}%</span>
+                    </div>
+                  )}
+                  {deal.dealRating && (
+                    <div
+                      className="rounded-md bg-zinc-900 border border-zinc-800 px-2 py-0.5 text-[10px] font-bold text-zinc-300"
+                      title="Score de Negócio"
+                    >
+                      Score: <span className="text-emerald-400">{deal.dealRating}/10</span>
+                    </div>
+                  )}
+                </div>
+
+                <CostPerHourBadge priceBRL={salePriceBRLNum} title={deal.title} compact />
               </div>
             </div>
 
@@ -356,6 +378,14 @@ export function DealCard({ deal, store, rate = 5.75, viewMode = 'grid' }: DealCa
                 </div>
 
                 <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setIsShareOpen(true)}
+                    title="Compartilhar oferta gamer"
+                    className="flex items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900/90 p-2 text-zinc-300 transition hover:border-emerald-500 hover:text-emerald-400 hover:shadow-md"
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </button>
+
                   <button
                     onClick={() => setIsAlertOpen(true)}
                     title="Definir alerta de preço (Discord/E-mail)"

@@ -19,6 +19,7 @@ import {
   Cpu,
 } from 'lucide-react';
 import { Store } from '@/types/deals';
+import { BudgetSlider } from '@/components/BudgetSlider';
 
 export interface FilterState {
   search: string;
@@ -278,38 +279,13 @@ export function SidebarFilters({
         </div>
       </div>
 
-      {/* 3. Faixas de Preço em Reais */}
+      {/* 3. Faixas de Preço em Reais com Slider Dinâmico */}
       <div>
-        <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3 flex items-center gap-1.5">
-          <Wallet className="h-3.5 w-3.5 text-emerald-400" />
-          <span>Preço Máximo (BRL)</span>
-        </h4>
-        <div className="grid grid-cols-2 gap-1.5">
-          {[
-            { label: 'Qualquer', usd: '' },
-            { label: `Até R$ 15`, usd: Math.round(15 / rate).toString() },
-            { label: `Até R$ 30`, usd: Math.round(30 / rate).toString() },
-            { label: `Até R$ 60`, usd: Math.round(60 / rate).toString() },
-            { label: `Até R$ 100`, usd: Math.round(100 / rate).toString() },
-            { label: `Até R$ 200`, usd: Math.round(200 / rate).toString() },
-          ].map((tier) => {
-            const isSelected = filters.underPrice === tier.usd && !filters.onlyFree;
-            return (
-              <button
-                key={tier.label}
-                disabled={filters.onlyFree}
-                onClick={() => onFilterChange({ underPrice: tier.usd, page: 0 })}
-                className={`rounded-xl px-2.5 py-1.5 text-xs font-semibold transition border text-center ${
-                  isSelected
-                    ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400 shadow-sm'
-                    : 'border-zinc-800 bg-zinc-900/60 text-zinc-300 hover:border-zinc-700 hover:text-white'
-                } disabled:opacity-40`}
-              >
-                {tier.label}
-              </button>
-            );
-          })}
-        </div>
+        <BudgetSlider
+          currentUSD={filters.underPrice}
+          rate={rate}
+          onChange={(usd) => onFilterChange({ underPrice: usd, onlyFree: false, page: 0 })}
+        />
       </div>
 
       {/* 4. Avaliação Steam */}

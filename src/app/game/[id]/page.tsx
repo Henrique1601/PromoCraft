@@ -11,6 +11,10 @@ import { CouponTracker } from '@/components/CouponTracker';
 import { SteamDeckBadge } from '@/components/SteamDeckBadge';
 import { SystemRequirementsCard } from '@/components/SystemRequirementsCard';
 import { MarketplaceLinksCard } from '@/components/MarketplaceLinksCard';
+import { DealPredictorBadge } from '@/components/DealPredictorBadge';
+import { CostPerHourBadge } from '@/components/CostPerHourBadge';
+import { EditionBadge } from '@/components/EditionBadge';
+import { CommunityVibeTracker } from '@/components/CommunityVibeTracker';
 import { GsapBackground } from '@/components/GsapBackground';
 import { getDirectStoreUrl } from '@/lib/links';
 import { getUSDtoBRLRate } from '@/lib/currency';
@@ -155,9 +159,12 @@ export default async function GameDetailPage({ params }: GamePageProps) {
               className="h-28 w-auto rounded-xl border border-zinc-800 object-cover shadow-lg"
             />
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                Comparativo de Preços
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                  Comparativo de Preços
+                </span>
+                <EditionBadge title={game.info.title} />
+              </div>
               <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold text-zinc-100">
                 {game.info.title}
               </h1>
@@ -192,13 +199,36 @@ export default async function GameDetailPage({ params }: GamePageProps) {
         </div>
 
         {/* Assistente de Decisão de Compra com IA / Algorítmico */}
-        <DealVerdictCard
-          currentPrice={parseFloat(bestCurrentPrice)}
-          cheapestEverPrice={cheapestEverUSD}
-          retailPrice={retailPrice}
-          rate={rate}
-          title={game.info.title}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <DealVerdictCard
+            currentPrice={parseFloat(bestCurrentPrice)}
+            cheapestEverPrice={cheapestEverUSD}
+            retailPrice={retailPrice}
+            rate={rate}
+            title={game.info.title}
+          />
+          <DealPredictorBadge
+            currentPriceUSD={parseFloat(bestCurrentPrice)}
+            cheapestEverPriceUSD={cheapestEverUSD}
+            savingsPercent={
+              retailPrice > 0
+                ? Math.round(((retailPrice - parseFloat(bestCurrentPrice)) / retailPrice) * 100)
+                : 0
+            }
+          />
+        </div>
+
+        {/* Métricas de Custo por Hora e Termômetro Social */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <CostPerHourBadge
+            priceBRL={bestCurrentPriceBRL}
+            title={game.info.title}
+          />
+          <CommunityVibeTracker
+            gameID={id}
+            title={game.info.title}
+          />
+        </div>
 
         {/* Steam Deck & Handheld Compatibility */}
         {game.info.steamAppID && (

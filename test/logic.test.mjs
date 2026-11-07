@@ -515,4 +515,98 @@ describe('PromoCraft - Testes Unitários de Regra de Negócio & Clean Code', () 
       assert.strictEqual(duel.diffBRL, 0.0);
     });
   });
+
+  describe('Inteligência Gamer: Custo por Hora & Duração (Pilar 2)', () => {
+    function estimateHours(title) {
+      const t = title.toLowerCase();
+      if (t.includes('the witcher 3')) return 52;
+      if (t.includes('elden ring')) return 58;
+      if (t.includes('hades')) return 22;
+      if (t.includes('rpg')) return 35;
+      return 15;
+    }
+
+    function calcCostPerHour(priceBRL, title) {
+      const hours = estimateHours(title);
+      const cost = priceBRL / hours;
+      let label = 'Padrão';
+      if (cost <= 1.2) label = 'Lendário';
+      else if (cost <= 2.5) label = 'Excelente';
+      else if (cost <= 5.0) label = 'Bom';
+      return { hours, cost, label };
+    }
+
+    test('deve identificar títulos de custo-benefício Lendário (< R$ 1,20/h)', () => {
+      // The Witcher 3 por R$ 30 (52h) = R$ 0,57/h
+      const res = calcCostPerHour(30.0, 'The Witcher 3: Wild Hunt');
+      assert.strictEqual(res.hours, 52);
+      assert.ok(res.cost < 1.0);
+      assert.strictEqual(res.label, 'Lendário');
+    });
+
+    test('deve estimar duração por heurística de gênero quando título não estiver indexado', () => {
+      const res = calcCostPerHour(70.0, 'Epic Fantasy RPG Adventure');
+      assert.strictEqual(res.hours, 35);
+      assert.strictEqual(res.label, 'Excelente');
+    });
+  });
+
+  describe('IA Preditiva de Promoções: Sazonalidade (Pilar 3)', () => {
+    function predictTiming(currentUSD, cheapestUSD, savingsPercent, daysToSale = 30) {
+      const isHistoricLow = cheapestUSD > 0 && currentUSD <= cheapestUSD * 1.05;
+      if (isHistoricLow || savingsPercent >= 75) {
+        return { verdict: 'BUY_NOW', confidence: 95 };
+      }
+      if (daysToSale <= 25 && savingsPercent < 35) {
+        return { verdict: 'WAIT_SALE', confidence: 84 };
+      }
+      return { verdict: 'CONSIDER', confidence: 70 };
+    }
+
+    test('deve recomendar BUY_NOW com 95% de confiança no menor preço histórico', () => {
+      const pred = predictTiming(9.99, 9.99, 70);
+      assert.strictEqual(pred.verdict, 'BUY_NOW');
+      assert.strictEqual(pred.confidence, 95);
+    });
+
+    test('deve recomendar WAIT_SALE quando a sale estiver iminente e o desconto for fraco', () => {
+      const pred = predictTiming(45.0, 20.0, 20, 10);
+      assert.strictEqual(pred.verdict, 'WAIT_SALE');
+      assert.strictEqual(pred.confidence, 84);
+    });
+  });
+
+  describe('Detecção de Edições Especiais (Pilar 2)', () => {
+    function detectEdition(title) {
+      const t = title.toLowerCase();
+      if (t.includes('goty') || t.includes('complete edition')) return 'GOTY / Complete';
+      if (t.includes('ultimate')) return 'Ultimate';
+      if (t.includes('deluxe')) return 'Deluxe';
+      return 'Standard';
+    }
+
+    test('deve classificar corretamente edições GOTY, Ultimate e Deluxe', () => {
+      assert.strictEqual(detectEdition('The Witcher 3: Complete Edition'), 'GOTY / Complete');
+      assert.strictEqual(detectEdition('Cyberpunk 2077: Ultimate Edition'), 'Ultimate');
+      assert.strictEqual(detectEdition('Resident Evil 4 Deluxe Edition'), 'Deluxe');
+      assert.strictEqual(detectEdition('Hollow Knight'), 'Standard');
+    });
+  });
+
+  describe('Cache Offline-First com TTL (Pilar 1)', () => {
+    function checkCacheAge(timestamp, maxAgeMs = 900000) {
+      const age = Date.now() - timestamp;
+      return age <= maxAgeMs;
+    }
+
+    test('deve validar como ativo cache recente dentro do TTL', () => {
+      const recent = Date.now() - 5000;
+      assert.strictEqual(checkCacheAge(recent), true);
+    });
+
+    test('deve expirar cache com timestamp além do TTL máximo', () => {
+      const expired = Date.now() - 1000000;
+      assert.strictEqual(checkCacheAge(expired), false);
+    });
+  });
 });

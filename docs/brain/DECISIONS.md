@@ -172,3 +172,31 @@ Este documento registra as decisões estratégicas e arquiteturais adotadas no d
      - Incremento semântico de versão no `package.json` para `1.7.0`.
      - Expansão da suíte de testes unitários para 37 testes automatizados (`node --test test/**/*.test.mjs`), todos passando com 100% de sucesso.
 - **Status:** Aceito e Implementado.
+
+
+---
+
+### ADR-015: Master Plan PromoCraft v2.0 — Pilares 1 a 5 Completos
+- **Contexto:** Solicitação da execução completa dos 5 pilares estratégicos de evolução do produto para consolidar o PromoCraft como plataforma líder de inteligência de compras e PC Gaming.
+- **Decisões:**
+  1. **Pilar 1 (Arquitetura de Dados & Resiliência Offline):**
+     - Módulo `src/lib/offlineCache.ts` implementando camada de cache local com TTL dinâmico de 15 minutos para acelerar pesquisas e navegação sem re-fetching redundante.
+  2. **Pilar 2 (Design Gamer & Microinterações A+):**
+     - Módulo `src/lib/gameMetrics.ts` com cálculo de Custo por Hora de Jogo (estimativa de campanha via HowLongToBeat heurística/base curada).
+     - Componente `CostPerHourBadge.tsx` integrado nos cards do feed (`DealCard.tsx`) e na página interna (`/game/[id]`).
+     - Componente `BudgetSlider.tsx` na `SidebarFilters.tsx` permitindo ao usuário filtrar visualmente pelo valor em mãos ("Tenho até R$ X").
+     - Componente `EditionBadge.tsx` identificando edições GOTY, Complete, Deluxe e Ultimate.
+  3. **Pilar 3 (IA Preditiva & Inteligência Financeira Gamer):**
+     - Previsor sazonal `predictSaleTiming` e componente `DealPredictorBadge.tsx` integrando datas das grandes Steam Sales anuais com probabilidade e veredito ("Compre Agora" vs "Espere a Sale").
+     - Priorizador de lista de desejos `WishlistPriorityTamer.tsx` em `/wishlist` calculando pontuação matemática de oportunidade para ranquear o que comprar primeiro no backlog.
+  4. **Pilar 4 (Comunidade, Social & Co-op Deals):**
+     - Componente `CommunityVibeTracker.tsx` com termômetro social de 3 reações (🔥 Compra Obrigatória, ⚖️ Só na Promoção, 💀 Passe Longe) e contadores com persistência no `localStorage`.
+     - Modal `CoopMatcherModal.tsx` ("🎮 Co-op") na barra superior para descoberta de ofertas cooperativas para jogar com amigos.
+     - Modal `ShareableDealModal.tsx` com visual estilizado gamer para compartilhamento em redes sociais, Discord e WhatsApp.
+  5. **Pilar 5 (Handheld & Big Picture Mode para Steam Deck / TV):**
+     - Componente `GamepadControllerListener.tsx` que detecta controles físicos via Gamepad API nativa e exibe HUD de sincronização de controle.
+     - Módulo `src/lib/notifications.ts` com integração da Web Notifications API do navegador para alertas locais de preço.
+  6. **Governança & Portão Final:**
+     - Incremento de versão para `2.0.0` no `package.json`.
+     - Expansão da suíte para 44 testes unitários automatizados em `test/logic.test.mjs`.
+- **Status:** Aceito e Implementado.

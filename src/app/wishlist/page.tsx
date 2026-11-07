@@ -23,6 +23,7 @@ import {
 import { GsapBackground } from '@/components/GsapBackground';
 import { useToast } from '@/components/ToastProvider';
 import { WishlistAchievements } from '@/components/WishlistAchievements';
+import { WishlistPriorityTamer } from '@/components/WishlistPriorityTamer';
 
 interface WishlistItem {
   id: string;
@@ -377,7 +378,10 @@ export default function WishlistPage() {
 
         {/* Gamificação & Conquistas de Economia Gamer (Frente B) */}
         {items.length > 0 && (
-          <WishlistAchievements items={items} totalSavingsBRL={totalSavingsBRL} />
+          <>
+            <WishlistAchievements items={items} totalSavingsBRL={totalSavingsBRL} />
+            <WishlistPriorityTamer items={items} rate={USD_TO_BRL} />
+          </>
         )}
 
         {/* Modal de Importação Steam */}

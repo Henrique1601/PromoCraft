@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bot, Gamepad2, Sparkles, Search, Gift } from 'lucide-react';
+import { Bot, Gamepad2, Sparkles, Search, Gift, Users2 } from 'lucide-react';
 import { SteamWishlistModal } from '@/components/SteamWishlistModal';
 import { AiConciergeModal } from '@/components/AiConciergeModal';
 import { CommandPalette } from '@/components/CommandPalette';
 import { GiveawaysModal } from '@/components/GiveawaysModal';
+import { CoopMatcherModal } from '@/components/CoopMatcherModal';
 import { CurrencySelector } from '@/components/CurrencySelector';
+import { GamepadControllerListener } from '@/components/GamepadControllerListener';
 import { BottomNav } from '@/components/BottomNav';
 
 export function HomeClientControls() {
@@ -14,6 +16,7 @@ export function HomeClientControls() {
   const [isAiConciergeOpen, setIsAiConciergeOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isGiveawaysOpen, setIsGiveawaysOpen] = useState(false);
+  const [isCoopOpen, setIsCoopOpen] = useState(false);
 
   // Listener global para atalho de teclado Ctrl+K ou Cmd+K
   useEffect(() => {
@@ -81,6 +84,16 @@ export function HomeClientControls() {
           </span>
         </button>
 
+        {/* Botão Co-op Matcher */}
+        <button
+          onClick={() => setIsCoopOpen(true)}
+          className="group relative flex items-center gap-1.5 rounded-xl border border-cyan-500/40 bg-gradient-to-r from-cyan-500/15 via-teal-500/10 to-cyan-500/15 px-3 py-1.5 text-xs font-bold text-cyan-300 shadow-sm shadow-cyan-950/40 transition hover:border-cyan-400 hover:bg-cyan-500/25 hover:text-white hover:shadow-cyan-500/20 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+          title="Radar de Jogos Cooperativos para jogar com amigos"
+        >
+          <Users2 className="h-3.5 w-3.5 text-cyan-400 transition group-hover:scale-110" />
+          <span className="hidden sm:inline">Co-op</span>
+        </button>
+
         {/* Câmbio Global Multi-Moedas */}
         <CurrencySelector />
       </div>
@@ -100,6 +113,14 @@ export function HomeClientControls() {
         isOpen={isGiveawaysOpen}
         onClose={() => setIsGiveawaysOpen(false)}
       />
+
+      <CoopMatcherModal
+        isOpen={isCoopOpen}
+        onClose={() => setIsCoopOpen(false)}
+      />
+
+      {/* Listener & HUD do Controle Gamepad (Steam Deck / Console) */}
+      <GamepadControllerListener />
 
       <CommandPalette
         isOpen={isCommandPaletteOpen}
