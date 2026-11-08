@@ -97,11 +97,32 @@ function parseSteamInput(input) {
   let cleaned = rawInput
     .replace(/^https?:\/\/(www\.)?steamcommunity\.com\/(id|profiles)\//i, '')
     .replace(/^https?:\/\/(www\.)?store\.steampowered\.com\/wishlist\/(id|profiles)\//i, '')
+    .replace(/\/wishlist\/?$/i, '')
     .replace(/\/.*$/, '')
     .trim();
   cleaned = cleaned.replace(/[?#].*$/, '').trim();
   const isSteamId64 = /^\d{17}$/.test(cleaned);
   return { identifier: cleaned, isSteamId64 };
+}
+
+function extractSteamId64FromXml(xmlText) {
+  if (!xmlText || typeof xmlText !== 'string') return null;
+  const match = xmlText.match(/<steamID64>(\d{17})<\/steamID64>/i);
+  return match ? match[1] : null;
+}
+
+function parseSteamWishlistApiResponse(data) {
+  if (!data || typeof data !== 'object') return [];
+  const items = data?.response?.items;
+  if (!Array.isArray(items)) return [];
+
+  return items
+    .filter((item) => item && typeof item.appid === 'number' && item.appid > 0)
+    .map((item) => ({
+      appid: item.appid,
+      priority: typeof item.priority === 'number' ? item.priority : undefined,
+      date_added: typeof item.date_added === 'number' ? item.date_added : undefined,
+    }));
 }
 
 function getSteamWishlistUrls(input) {
@@ -362,6 +383,49 @@ describe('PromoCraft - Testes Unitários de Regra de Negócio & Clean Code', () 
         urls.fallbackUrl,
         'https://store.steampowered.com/wishlist/profiles/gaben/wishlistdata/?p=0'
       );
+    });
+
+    test('deve extrair identificador mesmo se URL contiver sufixo /wishlist', () => {
+      const parsedVanity = parseSteamInput('https://steamcommunity.com/id/afarnsworth/wishlist');
+      assert.strictEqual(parsedVanity.identifier, 'afarnsworth');
+      assert.strictEqual(parsedVanity.isSteamId64, false);
+
+      const parsedProfile = parseSteamInput('https://steamcommunity.com/profiles/76561197960434622/wishlist/');
+      assert.strictEqual(parsedProfile.identifier, '76561197960434622');
+      assert.strictEqual(parsedProfile.isSteamId64, true);
+    });
+
+    test('deve extrair SteamID64 de payload XML da Steam Community', () => {
+      const xml = '<profile><steamID64>76561197960434622</steamID64><steamID>afarnsworth</steamID></profile>';
+      const id64 = extractSteamId64FromXml(xml);
+      assert.strictEqual(id64, '76561197960434622');
+    });
+
+    test('deve retornar null para XML sem SteamID64 ou inválido', () => {
+      assert.strictEqual(extractSteamId64FromXml('<response><error>Not found</error></response>'), null);
+      assert.strictEqual(extractSteamId64FromXml(''), null);
+      assert.strictEqual(extractSteamId64FromXml(null), null);
+    });
+
+    test('deve fazer parsing seguro da resposta do serviço oficial IWishlistService', () => {
+      const mockResponse = {
+        response: {
+          items: [
+            { appid: 1091500, priority: 1, date_added: 1670000000 },
+            { appid: 730, priority: 2, date_added: 1680000000 },
+            { appid: 'invalid' },
+            null,
+          ],
+        },
+      };
+      const items = parseSteamWishlistApiResponse(mockResponse);
+      assert.strictEqual(items.length, 2);
+      assert.strictEqual(items[0].appid, 1091500);
+      assert.strictEqual(items[1].appid, 730);
+
+      // Tratamento de resposta vazia ou com erro
+      assert.deepStrictEqual(parseSteamWishlistApiResponse({ response: {} }), []);
+      assert.deepStrictEqual(parseSteamWishlistApiResponse(null), []);
     });
 
     test('deve fazer parsing seguro de JSON da Steam sem quebrar em caso de HTML de login ou página privada', () => {

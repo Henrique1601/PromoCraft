@@ -231,3 +231,22 @@ Este documento registra as decisões estratégicas e arquiteturais adotadas no d
      - Incremento de versão para `2.1.0` no `package.json`.
      - Expansão da suíte para 50 testes unitários automatizados passando com 100% de sucesso.
 - **Status:** Aceito e Implementado.
+
+
+---
+
+### ADR-017: Migração Resiliente de Importação da Wishlist Steam para IWishlistService (v2.1.1)
+- **Contexto:** Usuários relataram que a importação de listas de desejos da Steam falhava sistematicamente com a mensagem "perfil privado/nenhum jogo encontrado", mesmo com perfis e detalhes de jogos 100% públicos. Investigação técnica revelou que a Valve desativou o endpoint AJAX não-oficial `wishlistdata/?p=0`, passando a retornar páginas HTML renderizadas por SSR da nova loja React (status 200, Content-Type text/html), o que quebrava o parsing JSON no backend.
+- **Decisões:**
+  1. **Resolução de Vanity URLs & XML Parsing:**
+     - Implementado utilitário `resolveSteamId64` em `src/lib/steam.ts` para converter vanity handles e links customizados em SteamID64 de 17 dígitos via XML nativo da comunidade Steam (`https://steamcommunity.com/id/<vanity>/?xml=1`), sem necessidade de chaves privadas de API.
+  2. **Consumo da Steam Web API Oficial:**
+     - Adoção do serviço oficial `https://api.steampowered.com/IWishlistService/GetWishlist/v1/?steamid=<steamid64>` com fallback para `GetWishlistSortedFiltered/v1`, retornando os `appid`s com 100% de precisão para wishlists públicas.
+     - Suporte transparente para a variável de ambiente opcional `STEAM_API_KEY`.
+  3. **Pipeline Duplo de Enriquecimento CheapShark & Steam Store:**
+     - Busca primária no CheapShark por `steamAppID` para vinculação direta com ofertas e preços promocionais.
+     - Fallback enriquecido via Steam Store App Details (`https://store.steampowered.com/api/appdetails?appids=<appid>&l=brazilian`) para títulos legados ou não indexados no CheapShark, garantindo que nenhum jogo da lista de desejos seja descartado.
+  4. **Governança & Testes:**
+     - Incremento de versão para `2.1.1` no `package.json`.
+     - Expansão da suíte para 54 testes unitários automatizados cobrindo normalização de URLs com `/wishlist`, extração XML de SteamID64 e sanitização do `IWishlistService`.
+- **Status:** Aceito e Implementado.
