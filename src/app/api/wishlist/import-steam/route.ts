@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchDeals } from '@/lib/cheapshark';
 import { getDb } from '@/lib/db';
-import { parseSteamInput, resolveSteamId64, fetchSteamWishlistAppIds } from '@/lib/steam';
+import { parseSteamInput, resolveSteamId64, fetchSteamWishlistAppIds, SteamWishlistItem } from '@/lib/steam';
 import crypto from 'crypto';
 
 interface ImportedGameItem {
@@ -16,6 +16,14 @@ interface ImportedGameItem {
   normalPrice?: number | null;
   savings?: number;
   createdAt: string;
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
 }
 
 export async function POST(req: NextRequest) {
@@ -52,8 +60,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Busca a lista de desejos via IWishlistService oficial da Valve
-    const wishlistItems = await fetchSteamWishlistAppIds(steamId64);
+    // Busca a lista de desejos via IWishlistService oficial da Valve (retorna todos os itens)
+    const wishlistItems: SteamWishlistItem[] = await fetchSteamWishlistAppIds(steamId64);
 
     // Se a wishlist pública não retornar nenhum item
     if (wishlistItems.length === 0) {
@@ -67,8 +75,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const importedGames: ImportedGameItem[] = [];
-
     // Persistência secundária no SQLite de forma não-bloqueante
     let db: any = null;
     try {
@@ -77,142 +83,144 @@ export async function POST(req: NextRequest) {
       console.warn('Banco de dados local não disponível em ambiente serverless, utilizando persistência híbrida:', dbErr);
     }
 
-    // Processa até 25 jogos prioritários da wishlist para enriquecer com ofertas
-    const targetItems = wishlistItems.slice(0, 25);
     const userAgent = 'PromoCraft/2.1 (https://promocraft.netlify.app; contact@promocraft.app)';
 
-    for (const item of targetItems) {
-      const appId = String(item.appid);
+    // ABORDAGEM 1: IMPORTAÇÃO TOTAL COM ENRIQUECIMENTO HÍBRIDO
+    // Todos os jogos da wishlist serão importados.
+    // 1. Enriquecemos metadados oficiais via Steam Store API em lotes concorrentes (até 60 jogos)
+    // 2. Consultamos ofertas CheapShark para os jogos prioritários (até 25 jogos)
+    // 3. Os demais jogos são importados com artes CDN oficiais e sincronização progressiva
 
-      try {
-        let gameItem: ImportedGameItem | null = null;
+    const MAX_STEAM_METADATA = 60;
+    const MAX_CHEAPSHARK_DEALS = 25;
 
-        // 1ª Tentativa: Busca direta no CheapShark por steamAppID
-        const csRes = await fetch(
-          `https://www.cheapshark.com/api/1.0/games?steamAppID=${appId}`,
-          {
-            headers: { 'User-Agent': userAgent },
-            signal: AbortSignal.timeout(4500),
-          }
-        ).catch(() => null);
+    const itemsToEnrich = wishlistItems.slice(0, MAX_STEAM_METADATA);
+    const steamDetailsMap = new Map<string, { name: string; headerImage: string; priceBRL: number | null; normalBRL: number | null; discount: number }>();
 
-        if (csRes && csRes.ok) {
-          const csData = await csRes.json().catch(() => null);
-          if (Array.isArray(csData) && csData.length > 0) {
-            const csGame = csData[0];
-            const cheapestUSD = parseFloat(csGame.cheapest) || null;
-
-            gameItem = {
-              id: crypto.randomUUID(),
-              gameID: csGame.gameID,
-              title: csGame.external || `Game #${appId}`,
-              thumb:
-                csGame.thumb ||
-                `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`,
-              steamAppID: appId,
-              cheapestPriceEver: null,
-              currentBestPrice: cheapestUSD,
-              salePrice: cheapestUSD,
-              normalPrice: cheapestUSD,
-              savings: 0,
-              createdAt: new Date().toISOString(),
-            };
-          }
-        }
-
-        // 2ª Tentativa: Se CheapShark não encontrou por steamAppID, consulta Steam Store appdetails
-        if (!gameItem) {
+    // Processa detalhes do Steam Store em lotes paralelos de 10
+    const detailChunks = chunkArray(itemsToEnrich, 10);
+    for (const chunk of detailChunks) {
+      await Promise.allSettled(
+        chunk.map(async (item) => {
+          const appId = String(item.appid);
           try {
-            const steamDetailRes = await fetch(
-              `https://store.steampowered.com/api/appdetails?appids=${appId}&l=brazilian`,
-              {
-                headers: { 'User-Agent': userAgent },
-                signal: AbortSignal.timeout(4000),
-              }
-            ).catch(() => null);
-
-            if (steamDetailRes && steamDetailRes.ok) {
-              const steamDetailData = await steamDetailRes.json().catch(() => null);
-              const appData = steamDetailData?.[appId]?.data;
-
+            const res = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appId}&l=brazilian`, {
+              headers: { 'User-Agent': userAgent },
+              signal: AbortSignal.timeout(3500),
+            });
+            if (res.ok) {
+              const data = await res.json().catch(() => null);
+              const appData = data?.[appId]?.data;
               if (appData && appData.name) {
-                const title = appData.name;
-                const headerImage =
-                  appData.header_image ||
-                  `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`;
                 const priceOverview = appData.price_overview;
-                const steamPriceBRL = priceOverview ? priceOverview.final / 100 : null;
-                const steamNormalBRL = priceOverview ? priceOverview.initial / 100 : null;
-                const steamDiscount = priceOverview ? priceOverview.discount_percent : 0;
-
-                // Tenta casar com ofertas CheapShark pelo título
-                const deals = await fetchDeals({ title, pageSize: 1 }).catch(() => []);
-                if (deals && deals.length > 0) {
-                  const deal = deals[0];
-                  gameItem = {
-                    id: crypto.randomUUID(),
-                    gameID: deal.gameID,
-                    title: deal.title || title,
-                    thumb: deal.thumb || headerImage,
-                    steamAppID: deal.steamAppID || appId,
-                    cheapestPriceEver: null,
-                    currentBestPrice: parseFloat(deal.salePrice) || steamPriceBRL,
-                    salePrice: parseFloat(deal.salePrice) || steamPriceBRL,
-                    normalPrice: parseFloat(deal.normalPrice) || steamNormalBRL,
-                    savings: parseFloat(deal.savings) || steamDiscount,
-                    createdAt: new Date().toISOString(),
-                  };
-                } else {
-                  // Fallback enriquecido diretamente com metadados oficiais Steam
-                  gameItem = {
-                    id: crypto.randomUUID(),
-                    gameID: `steam_${appId}`,
-                    title,
-                    thumb: headerImage,
-                    steamAppID: appId,
-                    cheapestPriceEver: null,
-                    currentBestPrice: steamPriceBRL,
-                    salePrice: steamPriceBRL,
-                    normalPrice: steamNormalBRL,
-                    savings: steamDiscount,
-                    createdAt: new Date().toISOString(),
-                  };
-                }
+                steamDetailsMap.set(appId, {
+                  name: appData.name,
+                  headerImage: appData.header_image || `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`,
+                  priceBRL: priceOverview ? priceOverview.final / 100 : null,
+                  normalBRL: priceOverview ? priceOverview.initial / 100 : null,
+                  discount: priceOverview ? priceOverview.discount_percent : 0,
+                });
               }
             }
-          } catch (steamErr) {
-            console.warn(`Consulta aos detalhes Steam do appId ${appId} falhou:`, steamErr);
+          } catch {
+            // Silencia falhas individuais de rede
           }
-        }
+        })
+      );
+    }
 
-        // Se conseguiu montar o item, adiciona e persiste no SQLite
-        if (gameItem) {
-          importedGames.push(gameItem);
+    // Processa CheapShark para os primeiros jogos prioritários
+    const csDealsMap = new Map<string, { gameID: string; title: string; thumb?: string; cheapestUSD: number | null }>();
+    const csTargets = wishlistItems.slice(0, MAX_CHEAPSHARK_DEALS);
+    const csChunks = chunkArray(csTargets, 10);
 
-          if (db) {
-            try {
-              db.prepare(`
-                INSERT INTO wishlist (id, gameID, title, thumb, steamAppID, cheapestPriceEver, currentBestPrice)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(gameID) DO UPDATE SET
-                  currentBestPrice = excluded.currentBestPrice,
-                  thumb = excluded.thumb
-              `).run(
-                gameItem.id,
-                gameItem.gameID,
-                gameItem.title,
-                gameItem.thumb || '',
-                gameItem.steamAppID || '',
-                null,
-                gameItem.currentBestPrice
-              );
-            } catch (insertErr) {
-              // Silencia erros de inserção secundária no SQLite
+    for (const chunk of csChunks) {
+      await Promise.allSettled(
+        chunk.map(async (item) => {
+          const appId = String(item.appid);
+          try {
+            const res = await fetch(`https://www.cheapshark.com/api/1.0/games?steamAppID=${appId}`, {
+              headers: { 'User-Agent': userAgent },
+              signal: AbortSignal.timeout(3500),
+            });
+            if (res.ok) {
+              const data = await res.json().catch(() => null);
+              if (Array.isArray(data) && data.length > 0) {
+                const g = data[0];
+                csDealsMap.set(appId, {
+                  gameID: g.gameID,
+                  title: g.external,
+                  thumb: g.thumb,
+                  cheapestUSD: parseFloat(g.cheapest) || null,
+                });
+              }
             }
+          } catch {
+            // Silencia falhas individuais
           }
+        })
+      );
+    }
+
+    // Monta a lista completa de jogos importados para 100% dos itens da wishlist
+    const importedGames: ImportedGameItem[] = [];
+
+    for (const item of wishlistItems) {
+      const appId = String(item.appid);
+      const steamInfo = steamDetailsMap.get(appId);
+      const csInfo = csDealsMap.get(appId);
+
+      const title = csInfo?.title || steamInfo?.name || `Jogo Steam #${appId}`;
+      const thumb =
+        csInfo?.thumb ||
+        steamInfo?.headerImage ||
+        `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`;
+      const gameID = csInfo?.gameID || `steam_${appId}`;
+      const price = csInfo?.cheapestUSD ?? steamInfo?.priceBRL ?? null;
+
+      const gameItem: ImportedGameItem = {
+        id: crypto.randomUUID(),
+        gameID,
+        title,
+        thumb,
+        steamAppID: appId,
+        cheapestPriceEver: null,
+        currentBestPrice: price,
+        salePrice: price,
+        normalPrice: steamInfo?.normalBRL || price,
+        savings: steamInfo?.discount || 0,
+        createdAt: new Date().toISOString(),
+      };
+
+      importedGames.push(gameItem);
+    }
+
+    // Persistência em lote no SQLite caso o banco esteja operacional
+    if (db && importedGames.length > 0) {
+      try {
+        const stmt = db.prepare(`
+          INSERT INTO wishlist (id, gameID, title, thumb, steamAppID, cheapestPriceEver, currentBestPrice)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(gameID) DO UPDATE SET
+            currentBestPrice = excluded.currentBestPrice,
+            thumb = excluded.thumb,
+            title = excluded.title
+        `);
+        for (const g of importedGames) {
+          try {
+            stmt.run(
+              g.id,
+              g.gameID,
+              g.title,
+              g.thumb || '',
+              g.steamAppID || '',
+              null,
+              g.currentBestPrice
+            );
+          } catch {}
         }
-      } catch (itemErr) {
-        console.warn(`Erro ao processar item ${appId} da wishlist:`, itemErr);
+      } catch (dbErr) {
+        console.warn('Erro ao persistir lote da wishlist no SQLite:', dbErr);
       }
     }
 
@@ -222,6 +230,7 @@ export async function POST(req: NextRequest) {
       importedCount: importedGames.length,
       importedGames,
       titles: importedGames.map((g) => g.title),
+      message: `Importados com sucesso todos os ${importedGames.length} jogos da sua lista de desejos do Steam!`,
     });
   } catch (error: any) {
     console.error('Erro na rota /api/wishlist/import-steam:', error);

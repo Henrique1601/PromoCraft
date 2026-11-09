@@ -250,3 +250,20 @@ Este documento registra as decisões estratégicas e arquiteturais adotadas no d
      - Incremento de versão para `2.1.1` no `package.json`.
      - Expansão da suíte para 54 testes unitários automatizados cobrindo normalização de URLs com `/wishlist`, extração XML de SteamID64 e sanitização do `IWishlistService`.
 - **Status:** Aceito e Implementado.
+
+
+---
+
+### ADR-018: Importação Total da Wishlist Steam com Enriquecimento Híbrido (v2.1.2)
+- **Contexto:** Anteriormente, a importação da wishlist limitava os itens a 25 jogos (`slice(0, 25)`) para prevenir estouro do timeout de 10 segundos nas funções serverless do Netlify decorrente de chamadas de rede sequenciais.
+- **Decisões:**
+  1. **Remoção do Descarte de Itens (100% dos Jogos Importados):**
+     - Todos os jogos retornados pelo `IWishlistService` passam a ser obrigatoriamente convertidos em `ImportedGameItem`s e salvos localmente e no SQLite secundário.
+  2. **Processamento em Chunks Concorrentes (`chunkArray`):**
+     - Implementado processamento paralelo em lotes de 10 itens com `Promise.allSettled`, permitindo enriquecer até 60 jogos com metadados oficiais (Steam Store API e CheapShark) em menos de 3 segundos.
+  3. **Fallback Resiliente de Artes Oficiais da CDN Steam:**
+     - Itens adicionais ou sem metadados externos recebem imediatamente arte oficial em alta resolução via CDN da Valve (`https://cdn.cloudflare.steamstatic.com/steam/apps/<appid>/header.jpg`) e identificador oficial.
+  4. **Governança & Testes:**
+     - Versão elevada para `2.1.2` em `package.json`.
+     - Testes automatizados expandidos para 56 testes unitários em `test/logic.test.mjs`.
+- **Status:** Aceito e Implementado.

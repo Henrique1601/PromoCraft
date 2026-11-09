@@ -125,6 +125,38 @@ function parseSteamWishlistApiResponse(data) {
     }));
 }
 
+function chunkArray(items, size) {
+  const chunks = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
+function mapHybridWishlistItems(wishlistItems, steamDetailsMap = new Map(), csDealsMap = new Map()) {
+  return wishlistItems.map((item) => {
+    const appId = String(item.appid);
+    const steamInfo = steamDetailsMap.get(appId);
+    const csInfo = csDealsMap.get(appId);
+
+    const title = csInfo?.title || steamInfo?.name || `Jogo Steam #${appId}`;
+    const thumb =
+      csInfo?.thumb ||
+      steamInfo?.headerImage ||
+      `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`;
+    const gameID = csInfo?.gameID || `steam_${appId}`;
+    const price = csInfo?.cheapestUSD ?? steamInfo?.priceBRL ?? null;
+
+    return {
+      gameID,
+      title,
+      thumb,
+      steamAppID: appId,
+      currentBestPrice: price,
+    };
+  });
+}
+
 function getSteamWishlistUrls(input) {
   const { identifier, isSteamId64 } = parseSteamInput(input);
   if (!identifier) {
@@ -426,6 +458,46 @@ describe('PromoCraft - Testes Unitários de Regra de Negócio & Clean Code', () 
       // Tratamento de resposta vazia ou com erro
       assert.deepStrictEqual(parseSteamWishlistApiResponse({ response: {} }), []);
       assert.deepStrictEqual(parseSteamWishlistApiResponse(null), []);
+    });
+
+    test('deve dividir array de itens em lotes menores concorrentes via chunkArray', () => {
+      const items = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+      const chunks = chunkArray(items, 5);
+      assert.strictEqual(chunks.length, 3);
+      assert.deepStrictEqual(chunks[0], [1, 2, 3, 4, 5]);
+      assert.deepStrictEqual(chunks[1], [6, 7, 8, 9, 10]);
+      assert.deepStrictEqual(chunks[2], [11, 12]);
+    });
+
+    test('deve garantir que 100% dos itens da wishlist sejam mapeados na importacao hibrida sem descartar nenhum jogo', () => {
+      const wishlistMock = [
+        { appid: 1091500 },
+        { appid: 730 },
+        { appid: 9999999 }, // jogo sem metadata externa
+      ];
+
+      const steamMap = new Map();
+      steamMap.set('1091500', { name: 'Cyberpunk 2077', headerImage: 'https://cdn.steam.com/cp.jpg', priceBRL: 199.9 });
+
+      const csMap = new Map();
+      csMap.set('730', { gameID: 'cs2_deal', title: 'Counter-Strike 2', thumb: 'https://cdn.cs.com/cs.jpg', cheapestUSD: 0 });
+
+      const imported = mapHybridWishlistItems(wishlistMock, steamMap, csMap);
+      assert.strictEqual(imported.length, 3);
+
+      // Jogo 1: Enriquecido com Steam Store
+      assert.strictEqual(imported[0].title, 'Cyberpunk 2077');
+      assert.strictEqual(imported[0].currentBestPrice, 199.9);
+
+      // Jogo 2: Enriquecido com CheapShark
+      assert.strictEqual(imported[1].gameID, 'cs2_deal');
+      assert.strictEqual(imported[1].title, 'Counter-Strike 2');
+
+      // Jogo 3: Fallback progressivo com CDN oficial (nenhum jogo descartado!)
+      assert.strictEqual(imported[2].gameID, 'steam_9999999');
+      assert.strictEqual(imported[2].title, 'Jogo Steam #9999999');
+      assert.strictEqual(imported[2].thumb, 'https://cdn.cloudflare.steamstatic.com/steam/apps/9999999/header.jpg');
+      assert.strictEqual(imported[2].currentBestPrice, null);
     });
 
     test('deve fazer parsing seguro de JSON da Steam sem quebrar em caso de HTML de login ou página privada', () => {
