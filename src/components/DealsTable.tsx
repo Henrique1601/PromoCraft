@@ -75,6 +75,7 @@ export function DealsTable({ deals, stores, rate = 5.75 }: DealsTableProps) {
     <>
       {selectedDealForAlert && (
         <PriceAlertModal
+          isOpen={Boolean(selectedDealForAlert)}
           deal={selectedDealForAlert}
           currentPriceBRL={formatBRL(parseFloat(selectedDealForAlert.salePrice), rate)}
           rate={rate}

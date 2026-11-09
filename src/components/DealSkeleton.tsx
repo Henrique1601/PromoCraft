@@ -1,12 +1,37 @@
 import React from 'react';
 
 interface DealSkeletonProps {
-  viewMode?: 'grid' | 'compact' | 'list';
+  viewMode?: 'grid' | 'compact' | 'list' | 'table';
   count?: number;
 }
 
 export function DealSkeleton({ viewMode = 'grid', count = 8 }: DealSkeletonProps) {
   const items = Array.from({ length: count });
+
+  if (viewMode === 'table') {
+    return (
+      <div className="w-full overflow-hidden rounded-3xl border border-zinc-800/80 bg-zinc-950/60 p-4 animate-pulse">
+        <div className="space-y-3">
+          {items.map((_, i) => (
+            <div key={i} className="flex items-center justify-between gap-4 border-b border-zinc-800/40 py-2.5">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-14 rounded-lg bg-zinc-800/80" />
+                <div className="space-y-1">
+                  <div className="h-4 w-40 rounded bg-zinc-800/80" />
+                  <div className="h-2.5 w-20 rounded bg-zinc-800/50" />
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="h-4 w-16 rounded bg-zinc-800/60" />
+                <div className="h-5 w-20 rounded bg-zinc-800/80" />
+                <div className="h-7 w-20 rounded-xl bg-zinc-800/70" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (viewMode === 'list') {
     return (
