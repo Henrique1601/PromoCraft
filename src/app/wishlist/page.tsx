@@ -19,11 +19,14 @@ import {
   PiggyBank,
   Flame,
   Send,
+  Smartphone,
 } from 'lucide-react';
 import { GsapBackground } from '@/components/GsapBackground';
 import { useToast } from '@/components/ToastProvider';
 import { WishlistAchievements } from '@/components/WishlistAchievements';
 import { WishlistPriorityTamer } from '@/components/WishlistPriorityTamer';
+import { WishlistShareCardModal } from '@/components/WishlistShareCardModal';
+import { DeviceSyncModal } from '@/components/DeviceSyncModal';
 
 interface WishlistItem {
   id: string;
@@ -48,6 +51,8 @@ export default function WishlistPage() {
   const [checkingAlerts, setCheckingAlerts] = useState(false);
   const [alertSummary, setAlertSummary] = useState<string | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
   // Steam Import Modal / Input
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -265,26 +270,22 @@ export default function WishlistPage() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleShareWishlist}
+              onClick={() => setIsShareModalOpen(true)}
               disabled={items.length === 0}
-              className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-50 ${
-                shareCopied
-                  ? 'bg-emerald-500 text-zinc-950 border-emerald-500 font-bold shadow-md shadow-emerald-500/25'
-                  : 'border-zinc-700 bg-zinc-900/90 text-zinc-200 hover:border-emerald-500 hover:text-emerald-400'
-              }`}
+              className="flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/90 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-emerald-500 hover:text-emerald-400 disabled:opacity-50 active:scale-[0.98]"
             >
-              {shareCopied ? (
-                <>
-                  <Check className="h-3.5 w-3.5" />
-                  <span>Resumo Copiado!</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="h-3.5 w-3.5 text-emerald-400" />
-                  <span className="hidden sm:inline">Compartilhar Lista</span>
-                  <span className="sm:hidden">Compartilhar</span>
-                </>
-              )}
+              <Share2 className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Compartilhar Lista</span>
+              <span className="sm:hidden">Card Gamer</span>
+            </button>
+
+            <button
+              onClick={() => setIsSyncModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-300 transition hover:border-emerald-400 hover:bg-emerald-500/20 active:scale-[0.98]"
+            >
+              <Smartphone className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Sync Dispositivos</span>
+              <span className="sm:hidden">Sync</span>
             </button>
 
             <button
@@ -551,6 +552,24 @@ export default function WishlistPage() {
           </div>
         )}
       </main>
+
+      {/* Modal de Compartilhamento / Card Gamer */}
+      <WishlistShareCardModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        items={items}
+        totalCurrentBRL={totalCurrentPriceBRL}
+        totalSavingsBRL={totalSavingsBRL}
+        savingsPercent={savingsPercent}
+        rate={USD_TO_BRL}
+      />
+
+      {/* Modal de Sincronização Multi-Dispositivo */}
+      <DeviceSyncModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        onSuccess={loadWishlist}
+      />
     </div>
   );
 }

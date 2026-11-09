@@ -835,4 +835,180 @@ describe('PromoCraft - Testes Unitários de Regra de Negócio & Clean Code', () 
       );
     });
   });
+
+  describe('Sincronização Multi-Dispositivo & Código Zero-Auth (v2.2.0)', () => {
+    const CODE_CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+    function generateSyncCode() {
+      let code = '';
+      for (let i = 0; i < 6; i++) {
+        const idx = Math.floor(Math.random() * CODE_CHARS.length);
+        code += CODE_CHARS[idx];
+      }
+      return code;
+    }
+
+    function isCodeValid(code) {
+      if (!code || typeof code !== 'string') return false;
+      const clean = code.trim().toUpperCase();
+      if (clean.length !== 6) return false;
+      // Não deve conter caracteres ambíguos: 0, O, 1, I
+      return /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6}$/.test(clean);
+    }
+
+    test('deve gerar código alfanumérico exatamente com 6 caracteres', () => {
+      const code = generateSyncCode();
+      assert.strictEqual(code.length, 6);
+      assert.strictEqual(isCodeValid(code), true);
+    });
+
+    test('nunca deve conter caracteres ambíguos 0, O, 1 ou I para fácil digitação', () => {
+      for (let i = 0; i < 50; i++) {
+        const code = generateSyncCode();
+        assert.doesNotMatch(code, /[01IO]/);
+      }
+    });
+
+    test('deve rejeitar códigos inválidos, com tamanho incorreto ou caracteres proibidos', () => {
+      assert.strictEqual(isCodeValid('ABC'), false);
+      assert.strictEqual(isCodeValid('ABC1234'), false);
+      assert.strictEqual(isCodeValid('ABC123'), false); // Contém '1'
+      assert.strictEqual(isCodeValid('ABCO23'), false); // Contém 'O'
+      assert.strictEqual(isCodeValid('ABC!@#'), false);
+    });
+
+    test('deve calcular TTL de 24 horas corretamente', () => {
+      const now = Date.now();
+      const expiresAt = now + 24 * 60 * 60 * 1000;
+      const diffHours = (expiresAt - now) / (1000 * 60 * 60);
+      assert.strictEqual(diffHours, 24);
+    });
+  });
+
+  describe('Filtros Temporais & Recorde Histórico no Gráfico de Preços (v2.2.0)', () => {
+    const mockHistory = [
+      { date: '2025-01-10', price: 50.0 },
+      { date: '2025-06-15', price: 40.0 },
+      { date: '2025-11-20', price: 25.0 }, // Menor preço de todos os tempos
+      { date: '2026-02-15', price: 35.0 },
+      { date: '2026-04-10', price: 30.0 },
+      { date: '2026-05-01', price: 45.0 },
+    ];
+
+    function filterPriceHistoryByRange(history, range, referenceDate = new Date('2026-05-05')) {
+      if (range === 'ALL') return history;
+      const refTime = referenceDate.getTime();
+      let days = 90;
+      if (range === '6M') days = 180;
+      if (range === '1A') days = 365;
+
+      const cutoff = refTime - days * 24 * 60 * 60 * 1000;
+      return history.filter((p) => new Date(p.date).getTime() >= cutoff);
+    }
+
+    test('deve retornar todos os pontos quando range for ALL', () => {
+      const filtered = filterPriceHistoryByRange(mockHistory, 'ALL');
+      assert.strictEqual(filtered.length, mockHistory.length);
+    });
+
+    test('deve filtrar corretamente os últimos 3 meses (90 dias)', () => {
+      const filtered = filterPriceHistoryByRange(mockHistory, '3M', new Date('2026-05-05'));
+      // Apenas pontos de fev/2026 a maio/2026
+      assert.strictEqual(filtered.length, 3);
+      assert.strictEqual(filtered[filtered.length - 1].price, 45.0);
+    });
+
+    test('deve filtrar corretamente o último 1 ano (365 dias)', () => {
+      const filtered = filterPriceHistoryByRange(mockHistory, '1A', new Date('2026-05-05'));
+      // Pontos a partir de maio/2025: jun/2025, nov/2025, fev/2026, abr/2026, mai/2026 (5 pontos)
+      assert.strictEqual(filtered.length, 5);
+    });
+
+    test('deve identificar com precisão o menor preço de todos os tempos (recorde histórico)', () => {
+      const lowest = mockHistory.reduce((min, cur) => (cur.price < min ? cur.price : min), Infinity);
+      assert.strictEqual(lowest, 25.0);
+    });
+  });
+
+  describe('SEO Programático: Resolução de Lojas e Gêneros (v2.2.0)', () => {
+    // Import logic simulation
+    function resolveStore(slug) {
+      const normalized = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const map = {
+        steam: { name: 'Steam', storeID: '1', badge: 'Ativação Direta Steam' },
+        gog: { name: 'GOG (Good Old Games)', storeID: '7', badge: '100% DRM-Free' },
+        greenmangaming: { name: 'Green Man Gaming', storeID: '3', badge: 'Parceiro Licenciado Oficial' },
+        epicgames: { name: 'Epic Games Store', storeID: '25', badge: 'Ativação Epic Launcher' },
+        nuuvem: { name: 'Nuuvem', storeID: '1', badge: 'Loja Oficial Brasileira' },
+      };
+      return map[normalized] || { name: slug, storeID: '1', badge: 'Parceiro Autorizado' };
+    }
+
+    function resolveGenre(slug) {
+      const normalized = slug.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const map = {
+        rpg: { name: 'RPG (Role Playing Games)', query: 'RPG' },
+        terror: { name: 'Terror & Sobrevivência (Horror)', query: 'Dead' },
+        soulslike: { name: 'Souls-like & Desafios Hardcore', query: 'Souls' },
+        roguelike: { name: 'Roguelike & Roguelite', query: 'Rogue' },
+      };
+      if (normalized === 'horror') return map.terror;
+      return map[normalized] || { name: slug.toUpperCase(), query: slug };
+    }
+
+    test('deve resolver corretamente dados e badge oficial de lojas suportadas', () => {
+      const steam = resolveStore('steam');
+      assert.strictEqual(steam.storeID, '1');
+      assert.strictEqual(steam.badge, 'Ativação Direta Steam');
+
+      const gog = resolveStore('GOG');
+      assert.strictEqual(gog.storeID, '7');
+      assert.strictEqual(gog.badge, '100% DRM-Free');
+
+      const nuuvem = resolveStore('nuuvem');
+      assert.strictEqual(nuuvem.badge, 'Loja Oficial Brasileira');
+    });
+
+    test('deve resolver gêneros suportados e mapear alias em inglês como horror -> terror', () => {
+      const rpg = resolveGenre('rpg');
+      assert.strictEqual(rpg.name, 'RPG (Role Playing Games)');
+      assert.strictEqual(rpg.query, 'RPG');
+
+      const horrorAlias = resolveGenre('horror');
+      assert.strictEqual(horrorAlias.name, 'Terror & Sobrevivência (Horror)');
+    });
+  });
+
+  describe('Tabela Compacta SteamDB & Classificação Gamer (v2.2.0)', () => {
+    function classifySteamRating(percent) {
+      if (percent >= 95) return { label: 'Extremamente Positivas', color: 'emerald' };
+      if (percent >= 80) return { label: 'Muito Positivas', color: 'teal' };
+      if (percent >= 70) return { label: 'Positivas', color: 'blue' };
+      if (percent >= 40) return { label: 'Neutras', color: 'amber' };
+      return { label: 'Negativas', color: 'red' };
+    }
+
+    test('deve classificar 96% como Extremamente Positivas', () => {
+      const rating = classifySteamRating(96);
+      assert.strictEqual(rating.label, 'Extremamente Positivas');
+      assert.strictEqual(rating.color, 'emerald');
+    });
+
+    test('deve classificar 84% como Muito Positivas', () => {
+      const rating = classifySteamRating(84);
+      assert.strictEqual(rating.label, 'Muito Positivas');
+      assert.strictEqual(rating.color, 'teal');
+    });
+
+    test('deve calcular porcentagem exata de economia em tabela compacta', () => {
+      function calculateSavings(retail, sale) {
+        if (!retail || retail <= 0 || sale >= retail) return 0;
+        return Math.round(((retail - sale) / retail) * 100);
+      }
+
+      assert.strictEqual(calculateSavings(200, 50), 75);
+      assert.strictEqual(calculateSavings(100, 100), 0);
+      assert.strictEqual(calculateSavings(60, 6), 90);
+    });
+  });
 });

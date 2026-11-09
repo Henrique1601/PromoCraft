@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Menu, Search, Heart, DollarSign } from 'lucide-react';
 import { CurrencySelector } from './CurrencySelector';
+import { SoundToggle } from './SoundToggle';
 
 interface CleanNavbarProps {
   rate: number;
@@ -76,6 +77,9 @@ export function CleanNavbar({
 
           {/* Seletor Global de Moeda */}
           <CurrencySelector />
+
+          {/* Efeitos Sonoros Gamer */}
+          <SoundToggle />
 
           {/* Link Rápido para a Wishlist */}
           <Link

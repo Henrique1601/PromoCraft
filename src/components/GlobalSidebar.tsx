@@ -23,12 +23,14 @@ import {
   X,
   Check,
   Bot,
+  Smartphone,
 } from 'lucide-react';
 import { Store } from '@/types/deals';
 import { FilterState } from '@/components/SidebarFilters';
 import { BudgetSlider } from '@/components/BudgetSlider';
 import { AiConciergeModal } from '@/components/AiConciergeModal';
 import { SteamWishlistModal } from '@/components/SteamWishlistModal';
+import { DeviceSyncModal } from '@/components/DeviceSyncModal';
 import { GiveawaysModal } from '@/components/GiveawaysModal';
 import { CoopMatcherModal } from '@/components/CoopMatcherModal';
 import { CommandPalette } from '@/components/CommandPalette';
@@ -75,6 +77,7 @@ export function GlobalSidebar({
   // Estados dos Modais de Ferramentas
   const [isAiConciergeOpen, setIsAiConciergeOpen] = useState(false);
   const [isSteamModalOpen, setIsSteamModalOpen] = useState(false);
+  const [isDeviceSyncOpen, setIsDeviceSyncOpen] = useState(false);
   const [isGiveawaysOpen, setIsGiveawaysOpen] = useState(false);
   const [isCoopOpen, setIsCoopOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -242,6 +245,18 @@ export function GlobalSidebar({
               <span>Sincronizar Steam</span>
             </div>
             <span className="text-[10px] text-indigo-400/80 font-normal">Wishlist</span>
+          </button>
+
+          {/* Sincronização entre Dispositivos */}
+          <button
+            onClick={() => setIsDeviceSyncOpen(true)}
+            className="group flex items-center justify-between rounded-xl border border-teal-500/30 bg-teal-950/20 hover:bg-teal-500/20 px-3 py-2 text-left font-bold text-teal-300 transition active:scale-98"
+          >
+            <div className="flex items-center gap-2.5">
+              <Smartphone className="h-4 w-4 text-teal-400 transition group-hover:scale-110" />
+              <span>Sync Dispositivos</span>
+            </div>
+            <span className="text-[10px] text-teal-400/80 font-normal">PC / Celular</span>
           </button>
         </div>
       </div>
@@ -474,6 +489,11 @@ export function GlobalSidebar({
       <SteamWishlistModal
         isOpen={isSteamModalOpen}
         onClose={() => setIsSteamModalOpen(false)}
+      />
+
+      <DeviceSyncModal
+        isOpen={isDeviceSyncOpen}
+        onClose={() => setIsDeviceSyncOpen(false)}
       />
 
       <GiveawaysModal

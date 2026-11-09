@@ -8,6 +8,7 @@ import {
   LayoutGrid,
   List,
   Columns3,
+  Table,
   ChevronLeft,
   ChevronRight,
   RotateCcw,
@@ -18,7 +19,9 @@ import {
 import gsap from 'gsap';
 import { Deal, Store } from '@/types/deals';
 import { DealCard } from '@/components/DealCard';
+import { DealsTable } from '@/components/DealsTable';
 import { DealSkeleton } from '@/components/DealSkeleton';
+import { sound } from '@/lib/sound';
 import { SidebarFilters, FilterState } from '@/components/SidebarFilters';
 import { useCatalogFilters } from '@/context/CatalogFilterContext';
 
@@ -27,6 +30,7 @@ interface DealsFeedProps {
   stores: Store[];
   rate?: number;
   hideSidebar?: boolean;
+  initialFilters?: Partial<FilterState>;
 }
 
 const INITIAL_FILTERS: FilterState = {
@@ -42,13 +46,16 @@ const INITIAL_FILTERS: FilterState = {
   topic: 'all',
 };
 
-export function DealsFeed({ initialDeals, stores, rate = 5.75, hideSidebar }: DealsFeedProps) {
+export function DealsFeed({ initialDeals, stores, rate = 5.75, hideSidebar, initialFilters }: DealsFeedProps) {
   const catalogContext = useCatalogFilters();
   const [deals, setDeals] = useState<Deal[]>(initialDeals);
-  const [internalFilters, setInternalFilters] = useState<FilterState>(INITIAL_FILTERS);
+  const [internalFilters, setInternalFilters] = useState<FilterState>(() => ({
+    ...INITIAL_FILTERS,
+    ...initialFilters,
+  }));
   const [suggestions, setSuggestions] = useState<Deal[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'compact' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'compact' | 'list' | 'table'>('grid');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -304,7 +311,7 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75, hideSidebar }: De
 
             <div className="flex items-center rounded-xl border border-zinc-800 bg-zinc-900/90 p-0.5">
               <button
-                onClick={() => setViewMode('grid')}
+                onClick={() => { sound.playClick(); setViewMode('grid'); }}
                 title="Grade Padrão"
                 className={`rounded-lg p-1.5 transition ${
                   viewMode === 'grid'
@@ -315,7 +322,7 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75, hideSidebar }: De
                 <LayoutGrid className="h-4 w-4" />
               </button>
               <button
-                onClick={() => setViewMode('compact')}
+                onClick={() => { sound.playClick(); setViewMode('compact'); }}
                 title="Grade Compacta"
                 className={`rounded-lg p-1.5 transition ${
                   viewMode === 'compact'
@@ -326,7 +333,7 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75, hideSidebar }: De
                 <Columns3 className="h-4 w-4" />
               </button>
               <button
-                onClick={() => setViewMode('list')}
+                onClick={() => { sound.playClick(); setViewMode('list'); }}
                 title="Lista Detalhada"
                 className={`rounded-lg p-1.5 transition ${
                   viewMode === 'list'
@@ -335,6 +342,17 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75, hideSidebar }: De
                 }`}
               >
                 <List className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => { sound.playClick(); setViewMode('table'); }}
+                title="Tabela Compacta (Estilo SteamDB)"
+                className={`rounded-lg p-1.5 transition ${
+                  viewMode === 'table'
+                    ? 'bg-emerald-500 text-zinc-950 font-bold shadow'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Table className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -415,6 +433,8 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75, hideSidebar }: De
                 <span>Restaurar Catálogo Completo</span>
               </button>
             </div>
+          ) : viewMode === 'table' ? (
+            <DealsTable deals={deals} stores={stores} rate={rate} />
           ) : (
             <div
               className={

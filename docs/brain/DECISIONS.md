@@ -267,3 +267,29 @@ Este documento registra as decisões estratégicas e arquiteturais adotadas no d
      - Versão elevada para `2.1.2` em `package.json`.
      - Testes automatizados expandidos para 56 testes unitários em `test/logic.test.mjs`.
 - **Status:** Aceito e Implementado.
+
+---
+
+### ADR-019: Modo Tabela Estilo SteamDB, Síntese de Áudio Procedural, Sincronização Multi-Dispositivo Sem Senha e SEO Programático (v2.2.0)
+- **Contexto:** Necessidade de transformar o PromoCraft em uma plataforma completa de alta densidade e utilidade diária para gamers, agregando modo tabela para comparação veloz de centenas de jogos, feedback sonoro gamificado sem peso de assets de áudio, facilidade de migrar a wishlist do PC para celular sem barreiras de autenticação, PWA para uso offline e indexação orgânica de lojas e gêneros.
+- **Decisões:**
+  1. **Tabela Compacta Estilo SteamDB (`DealsTable.tsx`):**
+     - Quarto modo de exibição no feed principal (`table`), complementando `grid`, `compact` e `list`.
+     - Colunas de alta densidade: Capa, Título com badges de recorde, Loja oficial, Preço de Tabela, Menor Preço em Reais e Dólar, % Desconto, Avaliação da Comunidade Steam com classificação cromática e Ações Rápidas.
+  2. **Sound FX Gamificado Procedural via Web Audio API (`src/lib/sound.ts`):**
+     - Efeitos sonoros sintetizados matematicamente em tempo real (clicks sutis, som de moedas/conquistas, alertas) sem dependências externas e 0 bytes de arquivos de áudio baixados.
+     - Botão de controle de áudio (`SoundToggle.tsx`) persistido no `localStorage`.
+  3. **Histórico Temporal Interativo (`PriceHistoryChart.tsx`):**
+     - Seletores de período `3M`, `6M`, `1A`, `ALL` e linha de corte horizontal `ReferenceLine` para recorde histórico.
+  4. **Sincronização Multi-Dispositivo Zero-Auth (`DeviceSyncModal.tsx` & `/api/sync/session`):**
+     - Códigos alfanuméricos de 6 dígitos sem caracteres ambíguos (`0`, `O`, `1`, `I`) com validade de 24 horas para exportar e importar a wishlist instantaneamente entre PC, celular ou Steam Deck.
+  5. **Card Gamer de Compartilhamento & Rota Pública (`/w/[code]` & `WishlistShareCardModal.tsx`):**
+     - Modal gerador de card visual estilizado de economia gamer para compartilhamento em redes sociais, Discord e WhatsApp, além de rota dinâmica pública indexável.
+  6. **PWA Completo & Offline Caching (`public/sw.js` & `ServiceWorkerRegister.tsx`):**
+     - Service worker com estratégias híbridas: Cache-First para imagens e assets estáticos, e Network-First com fallback de cache para navegação e dados de catálogo.
+  7. **SEO Programático para Lojas e Gêneros (`/loja/[store]` & `/genero/[genre]`):**
+     - Landing pages dinâmicas com breadcrumbs, metadados OpenGraph, JSON-LD Schema.org e filtros pré-aplicados.
+  8. **Qualidade & Testes Automatizados:**
+     - Expansão da suíte para 69 testes unitários em `test/logic.test.mjs`.
+     - Versão atualizada para `2.2.0` no `package.json`.
+- **Status:** Aceito e Implementado.

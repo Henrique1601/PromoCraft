@@ -66,6 +66,13 @@ export function getDb(): Database.Database {
         price REAL NOT NULL,
         recordedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS sync_sessions (
+        code TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        expiresAt INTEGER NOT NULL,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Adiciona coluna discordWebhook se ela não existir
