@@ -68,9 +68,7 @@ export function DealsFeed({ initialDeals, stores, rate = 5.75, hideSidebar, init
   const storeMap = new Map<string, Store>();
   stores.forEach((s) => storeMap.set(s.storeID, s));
 
-  const popularStores = stores.filter((s) =>
-    ['1', '2', '3', '7', '11', '15', '25', '27'].includes(s.storeID)
-  );
+  const popularStores = stores;
 
   // Contagem de filtros ativos
   const activeFiltersCount =

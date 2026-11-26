@@ -70,9 +70,7 @@ export function GlobalSidebar({
   const actualPopularStores =
     popularStores.length > 0
       ? popularStores
-      : stores.filter((s) =>
-          ['1', '2', '3', '7', '11', '15', '25', '27'].includes(s.storeID)
-        );
+      : stores;
 
   // Estados dos Modais de Ferramentas
   const [isAiConciergeOpen, setIsAiConciergeOpen] = useState(false);
