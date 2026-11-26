@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Flame, ExternalLink, ThumbsUp, Scale, Sparkles, Gamepad2, Bell, QrCode, Share2 } from 'lucide-react';
 import { Deal, Store } from '@/types/deals';
-import { getDirectStoreUrl } from '@/lib/links';
+import { getDirectStoreUrl, getActivationPlatform } from '@/lib/links';
 import { formatBRL } from '@/lib/currency';
 import { getPixPrice, getInstallmentInfo } from '@/lib/payment';
 import { PriceAlertModal } from '@/components/PriceAlertModal';
@@ -51,6 +51,7 @@ export function DealCard({ deal, store, rate = 5.75, viewMode = 'grid' }: DealCa
     deal.steamAppID,
     deal.title
   );
+  const activation = getActivationPlatform(deal.storeID, deal.steamAppID);
 
   return (
     <>

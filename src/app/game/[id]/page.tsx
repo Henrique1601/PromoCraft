@@ -1,65 +1,26 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import type { Metadata } from 'next';
-import { ArrowLeft, ExternalLink, History, Gamepad2, Zap, CreditCard } from 'lucide-react';
+import { ArrowLeft, ExternalLink, History, Gamepad2, Cpu } from 'lucide-react';
 import { fetchGameDetails, fetchStores } from '@/lib/cheapshark';
 import { WishlistButton } from '@/components/WishlistButton';
-import { GameVersusButton } from '@/components/GameVersusButton';
 import { PriceHistoryChart } from '@/components/PriceHistoryChart';
-import { DealVerdictCard } from '@/components/DealVerdictCard';
-import { CouponTracker } from '@/components/CouponTracker';
-import { SteamDeckBadge } from '@/components/SteamDeckBadge';
-import { SystemRequirementsCard } from '@/components/SystemRequirementsCard';
-import { MarketplaceLinksCard } from '@/components/MarketplaceLinksCard';
-import { DealPredictorBadge } from '@/components/DealPredictorBadge';
-import { CostPerHourBadge } from '@/components/CostPerHourBadge';
-import { EditionBadge } from '@/components/EditionBadge';
-import { CommunityVibeTracker } from '@/components/CommunityVibeTracker';
-import { GsapBackground } from '@/components/GsapBackground';
-import { getDirectStoreUrl } from '@/lib/links';
+import { AiBuyAdvisor } from '@/components/AiBuyAdvisor';
+import { CouponBadge } from '@/components/CouponBadge';
+import { getDirectStoreUrl, getActivationPlatform } from '@/lib/links';
 import { getUSDtoBRLRate } from '@/lib/currency';
-import { getPixPrice, getInstallmentInfo } from '@/lib/payment';
+import { getStoreCoupon } from '@/lib/coupons';
+import { fetchSteamDeckStatus } from '@/lib/steamdeck';
 
 interface GamePageProps {
   params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: GamePageProps): Promise<Metadata> {
-  const { id } = await params;
-  const game = await fetchGameDetails(id);
-  if (!game || !game.info) {
-    return {
-      title: 'Jogo não encontrado | PromoCraft',
-    };
-  }
-
-  const sortedDeals = [...game.deals].sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
-  const bestDeal = sortedDeals[0];
-  const savings = bestDeal ? Math.round(parseFloat(bestDeal.savings)) : 0;
-  const priceUSD = bestDeal ? parseFloat(bestDeal.price) : 0;
-
-  const title = savings > 0 
-    ? `${game.info.title} com ${savings}% OFF | PromoCraft` 
-    : `${game.info.title} | Comparativo de Preços PromoCraft`;
-
-  const description = `Compare preços de ${game.info.title} em mais de 30 lojas digitais. Menor preço atual por $${priceUSD.toFixed(2)} USD. Economize em ativações oficiais para PC.`;
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      images: game.info.thumb ? [{ url: game.info.thumb }] : [],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
-      images: game.info.thumb ? [game.info.thumb] : [],
-    },
-  };
-}
+const EXTRA_STORES = [
+  { id: 'nuuvem', name: 'Nuuvem (BR)', activation: 'Steam / PC' },
+  { id: 'eneba', name: 'Eneba', activation: 'Global / Key' },
+  { id: 'ubisoft', name: 'Ubisoft Store', activation: 'Ubisoft Connect' },
+  { id: 'ea', name: 'EA App Store', activation: 'EA App' },
+];
 
 export default async function GameDetailPage({ params }: GamePageProps) {
   const { id } = await params;
@@ -73,6 +34,8 @@ export default async function GameDetailPage({ params }: GamePageProps) {
     notFound();
   }
 
+  const steamDeck = await fetchSteamDeckStatus(game.info.steamAppID);
+
   const storeMap = new Map();
   stores.forEach((s) => storeMap.set(s.storeID, s));
 
@@ -81,55 +44,15 @@ export default async function GameDetailPage({ params }: GamePageProps) {
   const cheapestEverBRL = (cheapestEverUSD * USD_TO_BRL).toFixed(2).replace('.', ',');
   const cheapestEverDate = new Date(game.cheapestPriceEver.date * 1000).toLocaleDateString('pt-BR');
 
-  // Ordenar ofertas por menor preço
   const sortedDeals = [...game.deals].sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
-  const bestCurrentPrice = sortedDeals[0]?.price || '0';
-  const bestCurrentPriceNum = parseFloat(bestCurrentPrice);
-  const bestCurrentPriceBRL = bestCurrentPriceNum * USD_TO_BRL;
-  const retailPrice = parseFloat(sortedDeals[0]?.retailPrice || bestCurrentPrice);
-
-  // Schema.org Structured Data (JSON-LD) para indexação rica no Google
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: game.info.title,
-    image: game.info.thumb,
-    description: `Comparativo de preços em tempo real para o jogo ${game.info.title} em revendedores oficiais autorizados para PC.`,
-    offers: {
-      '@type': 'AggregateOffer',
-      priceCurrency: 'BRL',
-      lowPrice: bestCurrentPriceBRL.toFixed(2),
-      highPrice: (retailPrice * USD_TO_BRL).toFixed(2),
-      offerCount: sortedDeals.length,
-      offers: sortedDeals.map((d) => {
-        const s = storeMap.get(d.storeID);
-        return {
-          '@type': 'Offer',
-          price: (parseFloat(d.price) * USD_TO_BRL).toFixed(2),
-          priceCurrency: 'BRL',
-          seller: {
-            '@type': 'Organization',
-            name: s?.storeName || 'Loja Autorizada',
-          },
-          url: getDirectStoreUrl(d.dealID, d.storeID, game.info.steamAppID, game.info.title),
-        };
-      }),
-    },
-  };
+  const bestDeal = sortedDeals[0];
+  const bestCurrentPrice = bestDeal?.price || '0';
+  const bestSavings = bestDeal ? Math.round(parseFloat(bestDeal.savings)) : 0;
 
   return (
-    <div className="relative min-h-screen">
-      {/* Schema.org Rich Snippets */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-
-      {/* Fundo Animado com GSAP: Orbes de Luz Atmosféricos e Cor Básica Profunda */}
-      <GsapBackground />
-
+    <div className="min-h-screen">
       {/* Top Bar */}
-      <header className="sticky top-0 z-50 border-b border-zinc-800/80 bg-zinc-950/85 backdrop-blur-xl shadow-lg">
+      <header className="sticky top-0 z-50 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
           <Link
             href="/"
@@ -139,19 +62,16 @@ export default async function GameDetailPage({ params }: GamePageProps) {
             <span>Voltar para as Ofertas</span>
           </Link>
 
-          <Link
-            href="/wishlist"
-            className="rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:border-emerald-500 hover:text-emerald-300 transition shadow-sm"
-          >
+          <Link href="/wishlist" className="text-xs font-semibold text-emerald-400 hover:underline">
             Minha Wishlist
           </Link>
         </div>
       </header>
 
       {/* Main Details */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-6">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         {/* Game Header */}
-        <div className="flex flex-col gap-6 rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-6 backdrop-blur-md md:flex-row md:items-center md:justify-between shadow-xl">
+        <div className="flex flex-col gap-6 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-6 backdrop-blur-md md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
             <img
               src={game.info.thumb}
@@ -159,34 +79,30 @@ export default async function GameDetailPage({ params }: GamePageProps) {
               className="h-28 w-auto rounded-xl border border-zinc-800 object-cover shadow-lg"
             />
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                  Comparativo de Preços
-                </span>
-                <EditionBadge title={game.info.title} />
-              </div>
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                Comparativo de Preços
+              </span>
               <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold text-zinc-100">
                 {game.info.title}
               </h1>
-              {game.info.steamAppID && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-zinc-400">
-                  <Gamepad2 className="h-4 w-4 text-emerald-400" />
-                  <span>Steam App ID: {game.info.steamAppID}</span>
-                </div>
-              )}
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+                {game.info.steamAppID && (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950/80 px-2.5 py-1">
+                    <Gamepad2 className="h-3.5 w-3.5 text-zinc-400" />
+                    <span>Steam App ID: {game.info.steamAppID}</span>
+                  </span>
+                )}
+                {steamDeck && (
+                  <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-semibold ${steamDeck.colorClass}`}>
+                    <Cpu className="h-3.5 w-3.5" />
+                    <span>{steamDeck.label}</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center md:items-end gap-3">
-            <GameVersusButton
-              title={game.info.title}
-              thumb={game.info.thumb}
-              currentPrice={parseFloat(bestCurrentPrice)}
-              cheapestEverPrice={cheapestEverUSD}
-              retailPrice={retailPrice}
-              steamAppID={game.info.steamAppID}
-              rate={rate}
-            />
+          <div className="flex flex-col items-start md:items-end gap-3">
             <WishlistButton
               gameID={id}
               title={game.info.title}
@@ -194,54 +110,25 @@ export default async function GameDetailPage({ params }: GamePageProps) {
               steamAppID={game.info.steamAppID}
               cheapestPriceEver={cheapestEverUSD.toString()}
               currentBestPrice={bestCurrentPrice}
+              rate={rate}
             />
           </div>
         </div>
 
-        {/* Assistente de Decisão de Compra com IA / Algorítmico */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <DealVerdictCard
-            currentPrice={parseFloat(bestCurrentPrice)}
-            cheapestEverPrice={cheapestEverUSD}
-            retailPrice={retailPrice}
-            rate={rate}
+        {/* AI Buy Advisor */}
+        <div className="mt-6">
+          <AiBuyAdvisor
             title={game.info.title}
-          />
-          <DealPredictorBadge
             currentPriceUSD={parseFloat(bestCurrentPrice)}
-            cheapestEverPriceUSD={cheapestEverUSD}
-            savingsPercent={
-              retailPrice > 0
-                ? Math.round(((retailPrice - parseFloat(bestCurrentPrice)) / retailPrice) * 100)
-                : 0
-            }
+            cheapestEverUSD={cheapestEverUSD}
+            retailPriceUSD={parseFloat(bestDeal?.retailPrice || bestCurrentPrice)}
+            savingsPercent={bestSavings}
+            rate={rate}
           />
         </div>
-
-        {/* Métricas de Custo por Hora e Termômetro Social */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <CostPerHourBadge
-            priceBRL={bestCurrentPriceBRL}
-            title={game.info.title}
-          />
-          <CommunityVibeTracker
-            gameID={id}
-            title={game.info.title}
-          />
-        </div>
-
-        {/* Steam Deck & Handheld Compatibility */}
-        {game.info.steamAppID && (
-          <SteamDeckBadge steamAppID={game.info.steamAppID} title={game.info.title} />
-        )}
-
-        {/* Requisitos de Sistema Hardware ("Roda no Meu PC?") */}
-        {game.info.steamAppID && (
-          <SystemRequirementsCard steamAppID={game.info.steamAppID} title={game.info.title} />
-        )}
 
         {/* Historical Low Card */}
-        <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 text-sm text-emerald-300 shadow-sm">
+        <div className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 text-sm text-emerald-300">
           <History className="h-5 w-5 text-emerald-400 flex-shrink-0" />
           <div>
             <span className="font-semibold">Menor Preço Histórico Registrado: </span>
@@ -253,33 +140,32 @@ export default async function GameDetailPage({ params }: GamePageProps) {
         </div>
 
         {/* Gráfico de Tendência & Histórico */}
-        <PriceHistoryChart
-          currentPrice={parseFloat(bestCurrentPrice)}
-          cheapestEverPrice={cheapestEverUSD}
-          retailPrice={retailPrice}
-          rate={rate}
-        />
-
-        {/* Rastreador de Cupons Ativos */}
-        <CouponTracker />
+        <div className="mt-6">
+          <PriceHistoryChart
+            currentPrice={parseFloat(bestCurrentPrice)}
+            cheapestEverPrice={cheapestEverUSD}
+            retailPrice={parseFloat(bestDeal?.retailPrice || bestCurrentPrice)}
+            rate={rate}
+          />
+        </div>
 
         {/* Store Comparison Table */}
-        <div className="pt-2">
+        <div className="mt-8">
           <h2 className="text-lg font-bold text-zinc-100 mb-4 flex items-center gap-2">
             <span>Preço Atual em Todas as Lojas Oficiais</span>
             <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">
-              {sortedDeals.length} lojas encontradas
+              {sortedDeals.length} lojas monitoradas
             </span>
           </h2>
 
-          <div className="overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-900/40 shadow-xl backdrop-blur-sm">
+          <div className="overflow-x-auto rounded-2xl border border-zinc-800/80 bg-zinc-900/30">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-zinc-800 bg-zinc-950/80 text-xs font-semibold text-zinc-400">
+              <thead className="border-b border-zinc-800 bg-zinc-950/60 text-xs font-semibold text-zinc-400">
                 <tr>
-                  <th className="px-4 py-3 sm:px-6">Loja</th>
+                  <th className="px-4 py-3 sm:px-6">Loja & Cupom</th>
+                  <th className="px-4 py-3">Ativação</th>
                   <th className="px-4 py-3">Desconto</th>
-                  <th className="px-4 py-3">Preço Regular</th>
-                  <th className="px-4 py-3">Preço Atual & Condições BRL</th>
+                  <th className="px-4 py-3">Preço Atual</th>
                   <th className="px-4 py-3 sm:px-6 text-right">Ação</th>
                 </tr>
               </thead>
@@ -287,16 +173,10 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                 {sortedDeals.map((deal, index) => {
                   const store = storeMap.get(deal.storeID);
                   const priceUSD = parseFloat(deal.price);
-                  const retailUSD = parseFloat(deal.retailPrice);
                   const savings = Math.round(parseFloat(deal.savings));
                   const isBestDeal = index === 0;
 
-                  const rawBRL = priceUSD * USD_TO_BRL;
-                  const priceBRL = rawBRL.toFixed(2).replace('.', ',');
-                  const retailBRL = (retailUSD * USD_TO_BRL).toFixed(2).replace('.', ',');
-
-                  const pixInfo = getPixPrice(rawBRL);
-                  const installmentInfo = getInstallmentInfo(rawBRL, 3);
+                  const priceBRL = (priceUSD * USD_TO_BRL).toFixed(2).replace('.', ',');
 
                   const storeIconUrl = store?.images.icon
                     ? `https://www.cheapshark.com${store.images.icon}`
@@ -307,18 +187,20 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                     game.info.steamAppID,
                     game.info.title
                   );
+                  const activation = getActivationPlatform(deal.storeID, game.info.steamAppID);
+                  const coupon = getStoreCoupon(deal.storeID);
 
                   return (
                     <tr
                       key={deal.dealID}
                       className={`transition ${
                         isBestDeal
-                          ? 'bg-emerald-950/25 font-medium'
+                          ? 'bg-emerald-950/20 font-medium'
                           : 'hover:bg-zinc-800/40'
                       }`}
                     >
                       <td className="px-4 py-3.5 sm:px-6">
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
                           {storeIconUrl && (
                             <img
                               src={storeIconUrl}
@@ -334,7 +216,14 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                               Melhor Preço
                             </span>
                           )}
+                          {coupon && <CouponBadge code={coupon.code} discountText={coupon.discountText} />}
                         </div>
+                      </td>
+
+                      <td className="px-4 py-3.5">
+                        <span className={`inline-block rounded border px-2 py-0.5 text-[11px] font-medium ${activation.colorClass}`}>
+                          {activation.platform}
+                        </span>
                       </td>
 
                       <td className="px-4 py-3.5">
@@ -347,10 +236,6 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                         )}
                       </td>
 
-                      <td className="px-4 py-3.5 text-zinc-500">
-                        {savings > 0 ? `R$ ${retailBRL}` : '-'}
-                      </td>
-
                       <td className="px-4 py-3.5">
                         <div className="flex flex-col">
                           <span className={`text-base font-bold ${isBestDeal ? 'text-emerald-400' : 'text-zinc-100'}`}>
@@ -359,20 +244,6 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                           <span className="text-[10px] text-zinc-500">
                             ${priceUSD.toFixed(2)} USD
                           </span>
-
-                          {/* Simulação Pix & Parcelas BRL */}
-                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
-                            <span className="inline-flex items-center gap-0.5 font-bold text-emerald-400">
-                              <Zap className="h-2.5 w-2.5 fill-current" />
-                              R$ {pixInfo.formatted} no Pix
-                            </span>
-                            {installmentInfo && (
-                              <span className="inline-flex items-center gap-0.5 text-zinc-400">
-                                <CreditCard className="h-2.5 w-2.5" />
-                                {installmentInfo.installments}x de R$ {installmentInfo.valuePerInstallment}
-                              </span>
-                            )}
-                          </div>
                         </div>
                       </td>
 
@@ -381,7 +252,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                           href={directUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+                          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                             isBestDeal
                               ? 'bg-emerald-500 text-zinc-950 hover:bg-emerald-400 font-bold shadow-md shadow-emerald-950/50'
                               : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -394,13 +265,44 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                     </tr>
                   );
                 })}
+
+                {/* Lojas Extras (Nuuvem, Eneba, Ubisoft, EA App) */}
+                {EXTRA_STORES.map((extra) => {
+                  const directUrl = getDirectStoreUrl('', extra.id, game.info.steamAppID, game.info.title);
+                  const coupon = getStoreCoupon(extra.id);
+                  return (
+                    <tr key={extra.id} className="hover:bg-zinc-800/40 transition bg-zinc-950/20">
+                      <td className="px-4 py-3.5 sm:px-6">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-zinc-200 font-medium">{extra.name}</span>
+                          {coupon && <CouponBadge code={coupon.code} discountText={coupon.discountText} />}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="inline-block rounded border border-zinc-700 bg-zinc-800/70 px-2 py-0.5 text-[11px] text-zinc-300">
+                          {extra.activation}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-zinc-500">-</td>
+                      <td className="px-4 py-3.5 text-xs text-zinc-400">Consultar na loja</td>
+                      <td className="px-4 py-3.5 sm:px-6 text-right">
+                        <a
+                          href={directUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition hover:bg-zinc-700"
+                        >
+                          <span>Buscar na Loja</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
-
-        {/* Marketplaces & Lojas Externas (Eneba, Nuuvem, Kinguin) */}
-        <MarketplaceLinksCard title={game.info.title} />
       </main>
     </div>
   );
