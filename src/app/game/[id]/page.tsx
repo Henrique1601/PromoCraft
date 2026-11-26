@@ -10,17 +10,11 @@ import { getDirectStoreUrl, getActivationPlatform } from '@/lib/links';
 import { getUSDtoBRLRate } from '@/lib/currency';
 import { getStoreCoupon } from '@/lib/coupons';
 import { fetchSteamDeckStatus } from '@/lib/steamdeck';
+import { fetchExtraStorePrices } from '@/lib/extraStores';
 
 interface GamePageProps {
   params: Promise<{ id: string }>;
 }
-
-const EXTRA_STORES = [
-  { id: 'nuuvem', name: 'Nuuvem (BR)', activation: 'Steam / PC' },
-  { id: 'eneba', name: 'Eneba', activation: 'Global / Key' },
-  { id: 'ubisoft', name: 'Ubisoft Store', activation: 'Ubisoft Connect' },
-  { id: 'ea', name: 'EA App Store', activation: 'EA App' },
-];
 
 export default async function GameDetailPage({ params }: GamePageProps) {
   const { id } = await params;
@@ -34,7 +28,10 @@ export default async function GameDetailPage({ params }: GamePageProps) {
     notFound();
   }
 
-  const steamDeck = await fetchSteamDeckStatus(game.info.steamAppID);
+  const [steamDeck, extraStores] = await Promise.all([
+    fetchSteamDeckStatus(game.info.steamAppID),
+    fetchExtraStorePrices(game.info.title),
+  ]);
 
   const storeMap = new Map();
   stores.forEach((s) => storeMap.set(s.storeID, s));
@@ -267,8 +264,7 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                 })}
 
                 {/* Lojas Extras (Nuuvem, Eneba, Ubisoft, EA App) */}
-                {EXTRA_STORES.map((extra) => {
-                  const directUrl = getDirectStoreUrl('', extra.id, game.info.steamAppID, game.info.title);
+                {extraStores.map((extra) => {
                   const coupon = getStoreCoupon(extra.id);
                   return (
                     <tr key={extra.id} className="hover:bg-zinc-800/40 transition bg-zinc-950/20">
@@ -284,15 +280,21 @@ export default async function GameDetailPage({ params }: GamePageProps) {
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-zinc-500">-</td>
-                      <td className="px-4 py-3.5 text-xs text-zinc-400">Consultar na loja</td>
+                      <td className="px-4 py-3.5">
+                        {extra.priceBRL ? (
+                          <span className="text-base font-bold text-emerald-400">R$ {extra.priceBRL}</span>
+                        ) : (
+                          <span className="text-xs text-zinc-400">Consultar na loja</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3.5 sm:px-6 text-right">
                         <a
-                          href={directUrl}
+                          href={extra.url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition hover:bg-zinc-700"
                         >
-                          <span>Buscar na Loja</span>
+                          <span>{extra.priceBRL ? 'Ir à Loja' : 'Buscar na Loja'}</span>
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       </td>
